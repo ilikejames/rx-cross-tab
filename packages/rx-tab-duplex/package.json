@@ -1,0 +1,31 @@
+{
+  "name": "rx-tab-duplex",
+  "version": "1.0.0",
+  "description": "Share RxJs streams across tabs and windows",
+  "main": "dist/index.js",
+  "private": "false",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist", "README.md"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "broadcast-channel": "^4.13.0",
+    "lodash": "^4.17.21",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.182",
+    "@types/uuid": "^8.3.4",
+    "happy-dom": "^5.3.1",
+    "rxjs": "^7.5.5",
+    "vitest": "^0.15.1"
+  },
+  "peerDependencies": {
+    "rxjs": "^7.0.0 || ^6.0.0"
+  },
+  "scripts": {
+    "build": "rimraf dist && tsc ",
+    "test": "vitest --run"
+  }
+}

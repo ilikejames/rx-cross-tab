@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "composite": false,
+        "skipLibCheck": true,
+        "strict": true,
+        "target": "es5",
+        "module": "esnext",
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "removeComments": true,
+        "isolatedModules": true,
+        "rootDir": ".",
+        "baseUrl": ".",
+    },
+    "exclude": ["node_modules", "dist"],
+}
