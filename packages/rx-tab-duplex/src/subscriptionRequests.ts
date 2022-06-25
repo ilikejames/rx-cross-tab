@@ -1,8 +1,9 @@
 import { BroadcastChannel } from 'broadcast-channel';
 import { Subject } from 'rxjs';
-import { share, tap } from 'rxjs/operators';
+import { share, tap, take } from 'rxjs/operators';
 import { settings } from './settings';
 import { flatten } from 'lodash';
+import { leader$ } from './leader';
 
 /**
  * Communication network for requests to different streams.
@@ -21,17 +22,22 @@ export interface Request {
 
 const subscriptionRequests = new Map<string, Request[]>();
 
+console.log(`Creating channel "${settings.subscriptionChannel}"`);
 let channel = new BroadcastChannel<Request>(settings.subscriptionChannel);
 
-export const requestEvent$ = requestEvent.pipe(
-    tap(v => {
-        console.log('requestEvent$', v);
-    }),
-    share(),
-);
+console.log('channel', channel);
+export const requestEvent$ = requestEvent.pipe(share());
 
-export const request = (r: Request) => {
-    channel.postMessage(r);
+requestEvent$.subscribe();
+
+export const request = (request: Request) => {
+    channel.postMessage(request);
+    // When leader, this will not receive
+    leader$.pipe(take(1)).subscribe(leader => {
+        if (leader) {
+            onRequest(request);
+        }
+    });
 };
 
 export const getSubscriptionRequests = (): Request[] => {
@@ -43,37 +49,42 @@ export const getSubscriptionRequests = (): Request[] => {
  * When a instance goes from follower -> leader, we use this to know what to sub and post
  */
 
-export const create = () => {
-    channel.addEventListener('message', e => {
-        const requests = subscriptionRequests.get(e.name) || [];
-        const existing = requests.find(x => x.id === e.id);
-        const other = requests.filter(x => x.id !== e.id);
+export const create = () => {};
 
-        let count = 0;
+channel.addEventListener('message', e => {
+    console.log('com channel', e);
+    onRequest(e);
+});
 
-        switch (e.action) {
-            case 'subscribe': {
-                if (existing) {
-                    count = (existing.count ?? 0) + 1;
-                    subscriptionRequests.set(e.name, [...other, { ...existing, count }]);
-                } else {
-                    count = 1;
-                    subscriptionRequests.set(e.name, [...other, { ...e, count }]);
-                }
-                break;
+const onRequest = (request: Request) => {
+    const requests = subscriptionRequests.get(request.name) || [];
+    const existing = requests.find(x => x.id === request.id);
+    const other = requests.filter(x => x.id !== request.id);
+
+    let count = 0;
+
+    switch (request.action) {
+        case 'subscribe': {
+            if (existing) {
+                count = (existing.count ?? 0) + 1;
+                subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
+            } else {
+                count = 1;
+                subscriptionRequests.set(request.name, [...other, { ...request, count }]);
             }
-            case 'unsubscribe': {
-                count = existing?.count ? existing.count : 0;
-                if (existing && count > 1) {
-                    count -= 1;
-                    subscriptionRequests.set(e.name, [...other, { ...existing, count }]);
-                } else {
-                    count = 0;
-                    subscriptionRequests.set(e.name, other);
-                }
+            break;
+        }
+        case 'unsubscribe': {
+            count = existing?.count ? existing.count : 0;
+            if (existing && count > 1) {
+                count -= 1;
+                subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
+            } else {
+                count = 0;
+                subscriptionRequests.set(request.name, other);
             }
         }
+    }
 
-        requestEvent.next({ ...e, count });
-    });
+    requestEvent.next({ ...request, count });
 };

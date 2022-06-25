@@ -1,5 +1,5 @@
 export const settings = {
-  leadershipChannel: "leader",
-  subscriptionChannel: "sub",
-  leadershipTimeout: 2000,
+    leadershipChannel: 'leader',
+    subscriptionChannel: 'rx-tab-dublex',
+    leadershipTimeout: 2000,
 };
