@@ -1,2 +1,8 @@
 export * from './duplex';
-export { create } from './subscriptionRequests';
+import { startLeadershipHandler } from './leader';
+import { startSubscriptionChannel } from './internals/subscriptionRequests';
+
+export const create = () => {
+    startSubscriptionChannel();
+    startLeadershipHandler();
+};

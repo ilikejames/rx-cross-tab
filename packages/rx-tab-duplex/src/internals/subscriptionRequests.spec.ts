@@ -1,9 +1,15 @@
 import { describe, test, expect, vi, MockedObject, beforeEach, afterEach } from 'vitest';
-import { create, getSubscriptionRequests, Request, requestEvent$ } from './subscriptionRequests';
+import {
+    getSubscriptionRequests,
+    Request,
+    requestEvent$,
+    startSubscriptionChannel,
+} from './subscriptionRequests';
 import { BroadcastChannel } from 'broadcast-channel';
 import { bufferCount, firstValueFrom, take } from 'rxjs';
 
 describe('subscriptionRequests', () => {
+    let teardown: () => Promise<void>;
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mock('broadcast-channel', () => {
@@ -18,12 +24,14 @@ describe('subscriptionRequests', () => {
             bc.prototype.postMessage = postMessage;
             bc.prototype.onMessage = vi.fn();
             bc.prototype.reset = vi.fn(() => (handlers = new Array<any>()));
+            bc.prototype.close = vi.fn();
             return { BroadcastChannel: bc };
         });
-        create();
+        teardown = startSubscriptionChannel();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await teardown();
         vi.restoreAllMocks();
     });
 
@@ -68,7 +76,7 @@ describe('subscriptionRequests', () => {
         }
     });
 
-    test('maintains number of decreasing subscriptions to a topic', async () => {
+    test.only('maintains number of decreasing subscriptions to a topic', async () => {
         const bc = new BroadcastChannel('none') as MockedBroadcastChannel;
         const name = 'name1';
         const before = getSubscriptionRequests().find(x => x.name === name)?.count || 0;
@@ -114,14 +122,8 @@ describe('subscriptionRequests', () => {
                 action: 'unsubscribe',
             });
 
-            expect(getSubscriptionRequests()).toMatchObject([
-                {
-                    id: `1`,
-                    name,
-                    action: 'subscribe',
-                    count: before + 2 - 2,
-                },
-            ]);
+            const requests = getSubscriptionRequests();
+            expect(requests).toEqual([]);
         } finally {
             bc.reset();
         }

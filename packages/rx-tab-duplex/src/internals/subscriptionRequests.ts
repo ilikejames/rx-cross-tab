@@ -1,9 +1,12 @@
 import { BroadcastChannel } from 'broadcast-channel';
 import { Subject } from 'rxjs';
-import { share, tap, take } from 'rxjs/operators';
-import { settings } from './settings';
+import { share, take } from 'rxjs/operators';
+import { settings } from '../settings';
 import { flatten } from 'lodash';
-import { leader$ } from './leader';
+import { leader$ } from '../leader';
+import { rootLogger } from './logger';
+
+const logger = rootLogger.createLogger('request-channel');
 
 /**
  * Communication network for requests to different streams.
@@ -22,19 +25,36 @@ export interface Request {
 
 const subscriptionRequests = new Map<string, Request[]>();
 
-console.log(`Creating channel "${settings.subscriptionChannel}"`);
-let channel = new BroadcastChannel<Request>(settings.subscriptionChannel);
+logger.info(`Creating channel "${settings.subscriptionChannel}"`);
+let channel: BroadcastChannel<Request>;
 
-console.log('channel', channel);
 export const requestEvent$ = requestEvent.pipe(share());
+
+export const startSubscriptionChannel = () => {
+    if (!channel) {
+        channel = new BroadcastChannel<Request>(settings.subscriptionChannel);
+
+        /**
+         * Subscribe to request from other tabs.
+         * When a instance goes from follower -> leader, we use this to know what to sub and post
+         */
+        channel.addEventListener('message', e => {
+            logger.debug('Message', e);
+            onRequest(e);
+        });
+    }
+    return () => channel && channel.close();
+};
 
 requestEvent$.subscribe();
 
 export const request = (request: Request) => {
+    logger.debug('Broadcasting to other nodes a new subscription request', request);
     channel.postMessage(request);
     // When leader, this will not receive
     leader$.pipe(take(1)).subscribe(leader => {
         if (leader) {
+            logger.debug('Broadcasting to self', request);
             onRequest(request);
         }
     });
@@ -43,18 +63,6 @@ export const request = (request: Request) => {
 export const getSubscriptionRequests = (): Request[] => {
     return flatten(Array.from(subscriptionRequests.values()));
 };
-
-/**
- * Subscribe to request from other tabs.
- * When a instance goes from follower -> leader, we use this to know what to sub and post
- */
-
-export const create = () => {};
-
-channel.addEventListener('message', e => {
-    console.log('com channel', e);
-    onRequest(e);
-});
 
 const onRequest = (request: Request) => {
     const requests = subscriptionRequests.get(request.name) || [];
@@ -67,9 +75,11 @@ const onRequest = (request: Request) => {
         case 'subscribe': {
             if (existing) {
                 count = (existing.count ?? 0) + 1;
+                logger.debug('Inc existing subscriptions', request.name, count);
                 subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
             } else {
                 count = 1;
+                logger.debug('First subscription', request.name);
                 subscriptionRequests.set(request.name, [...other, { ...request, count }]);
             }
             break;
@@ -78,9 +88,11 @@ const onRequest = (request: Request) => {
             count = existing?.count ? existing.count : 0;
             if (existing && count > 1) {
                 count -= 1;
+                logger.debug('Dec subscriptions', request.name, count);
                 subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
             } else {
                 count = 0;
+                logger.debug('Cancelling subscriptions', request.name);
                 subscriptionRequests.set(request.name, other);
             }
         }
