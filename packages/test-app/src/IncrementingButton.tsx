@@ -1,21 +1,30 @@
 import { FC } from 'react';
 import { BehaviorSubject } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { bind, shareLatest } from '@react-rxjs/core';
-import { duplex } from 'rx-tab-duplex';
+import { broadcast, duplex } from 'rx-tab-duplex';
 
 export const IncrementingButton: FC = () => {
-    const onClick = () => subject.next(subject.value + 1);
     const counter = useCounter();
+    const onClick = () => subjectBroadcast(counter + 1);
 
     return (
         <div>
-            <button onClick={onClick}>Clicks: {counter}</button>
+            <button onClick={onClick}>Click Increments Across All Tabs: {counter}</button>
         </div>
     );
 };
 
 const subject = new BehaviorSubject<number>(0);
 
+const subjectBroadcast = broadcast<number, BehaviorSubject<number>>('IncrementingCounter', subject);
+
+const mystream$ = subject.pipe(
+    tap(v => console.log('!!!', v)),
+    shareLatest(),
+);
+
 const [useCounter] = bind(() => {
-    return duplex('IncrementingCounter', subject.pipe(shareLatest()));
+    const stream$ = duplex('IncrementingCounter', mystream$);
+    return stream$;
 }, 0);

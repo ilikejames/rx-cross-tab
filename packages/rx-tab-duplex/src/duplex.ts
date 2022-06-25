@@ -1,17 +1,49 @@
-import { filter, Observable, switchMap, tap, from, distinctUntilChanged } from 'rxjs';
+import { filter, Observable, switchMap, tap, from, distinctUntilChanged, Subject } from 'rxjs';
 import {
     request,
     requestEvent$,
-    getSubscriptionRequests,
     internalId,
     getChannel,
     onNewSubscriptionRequest,
     rootLogger,
     createSourceProxy,
+    getProxy,
+    hasProxy,
 } from './internals';
 import { leader$ } from './leader';
 
 const uniqueNames = new Set<string>();
+
+//type DuplexPair<T> = [Observable<T>, (next: T) => void];
+
+type Broadcast<T> = { broadcast: (value: T) => void };
+
+export const broadcast = <T, S extends Subject<T>>(name: string, subject: S) => {
+    const channel = getChannel<T>(name);
+    // const originalNext = subject.next.bind(subject);
+    // const next = (value: T) => {
+    //     channel.postMessage(value);
+    //     originalNext(value);
+    // };
+    // const extended = Object.defineProperty(subject, 'broadcast', {
+    //     value: function (value: T) {
+    //         console.log('setting value', value);
+    //         channel.postMessage(value);
+    //         subject.next(value);
+    //     },
+    // });
+    const f = function (value: T) {
+        console.log('setting value', value);
+        channel.postMessage(value);
+        subject.next(value);
+
+        if (hasProxy(name)) {
+            const [, proxy] = getProxy<T>(name);
+            proxy.next(value);
+        }
+    };
+    return f;
+};
 
 export const duplex = <T>(name: string, source$: Observable<T>): Observable<T> => {
     const logger = rootLogger.createLogger(name);
