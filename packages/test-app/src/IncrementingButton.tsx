@@ -10,7 +10,9 @@ export const IncrementingButton: FC = () => {
 
     return (
         <div>
-            <button onClick={onClick}>Click Increments Across All Tabs: {counter}</button>
+            <button id="incrementing-button" onClick={onClick}>
+                Click Increments Across All Tabs: {counter}
+            </button>
         </div>
     );
 };

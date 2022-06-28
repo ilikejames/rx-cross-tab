@@ -1,9 +1,19 @@
 
 TODO: 
-- Bug: new joiners don't get initial startup state (but do get next state)
+- ~~e2e setup~~
+- ~~Bug: new joiners don't get initial startup state (but do get next state)~~
+- shared websocket
+- expose leader$
 - Add linting
+- why the reset on looking away from machine for X hours.   
 - Types of sharing, plus some really good names. 
-- Does the unsubscribe work correctly.
+- Confirm the unsubscribe works correctly.
+- leader per stream... for multiple ws. ?.
+- performance metric. 10s of ops and whats the count. post results to a google sheets. No rx-tab, 1 tab, 2nd tab.
+
+
+rx-cross-tab
+
 
 ```ts
 /*
