@@ -1,0 +1,20 @@
+{
+    "name": "test-service-api",
+    "version": "1.0.0",
+    "description": "Api definition for client and service",
+    "private": "true",
+    "license": "MIT",
+    "dependencies": {
+        "rxjs": "^7.5.5"
+    },
+    "peerDependencies": {
+        "rxjs": "^7.0.0 || ^6.0.0"
+    },
+    "devDependencies": {
+        "typescript": "^4.7.4"
+    },
+    "scripts": {
+        "build": "rimraf dist && tsc "
+    }
+  }
+  
