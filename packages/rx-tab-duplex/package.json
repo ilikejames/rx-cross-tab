@@ -12,6 +12,7 @@
   "dependencies": {
     "broadcast-channel": "^4.13.0",
     "lodash": "^4.17.21",
+    "rx-tab-leader": "^1.0.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {

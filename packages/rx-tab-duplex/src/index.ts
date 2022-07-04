@@ -1,8 +1,8 @@
 export * from './duplex';
-import { startLeadershipHandler } from './leader';
 import { startSubscriptionChannel } from './internals/subscriptionRequests';
+import { startup } from 'rx-tab-leader';
 
 export const create = () => {
     startSubscriptionChannel();
-    startLeadershipHandler();
+    startup();
 };

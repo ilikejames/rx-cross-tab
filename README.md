@@ -2,6 +2,7 @@
 TODO: 
 - ~~e2e setup~~
 - ~~Bug: new joiners don't get initial startup state (but do get next state)~~
+- missing: shouldn't new joiners request current subscription list?
 - shared websocket
 - expose leader$
 - Add linting

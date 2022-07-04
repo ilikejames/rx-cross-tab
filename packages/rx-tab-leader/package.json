@@ -1,0 +1,28 @@
+{
+    "name": "rx-tab-leader",
+    "version": "1.0.0",
+    "description": "Elect a tab as leader using raft leader algorithm",
+    "main": "dist/index.js",
+    "private": "false",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist", "README.md"
+    ],
+    "license": "MIT",
+    "dependencies": {
+      "broadcast-channel": "^4.13.0",
+      "uuid": "^8.3.2"
+    },
+    "devDependencies": {
+      "@types/uuid": "^8.3.4",
+      "rxjs": "^7.5.5"
+    },
+    "peerDependencies": {
+      "rxjs": "^7.0.0 || ^6.0.0"
+    },
+    "scripts": {
+      "build": "rimraf dist && tsc ",
+      "test": "vitest --run"
+    }
+  }
+  
