@@ -3,7 +3,8 @@ export type TopicType =
     | 'who_is_leader_response'
     | 'vote_for_me'
     | 'vote'
-    | 'heartbeat';
+    | 'heartbeat'
+    | 'tab_id';
 
 export interface Message<T extends TopicType> {
     correlationId: string;
@@ -14,6 +15,10 @@ export interface Message<T extends TopicType> {
 
 export interface WhoIsLeader extends Message<'who_is_leader'> {
     payload: undefined;
+}
+
+export interface TabIdMessage extends Message<'tab_id'> {
+    payload: string;
 }
 
 export interface WhoIsLeaderResponse extends Message<'who_is_leader_response'> {
@@ -45,6 +50,8 @@ export type ObjectType<T extends TopicType> = T extends 'who_is_leader'
     ? Vote
     : T extends 'vote_for_me'
     ? VoteForMe
+    : T extends 'tab_id'
+    ? TabIdMessage
     : never;
 
-export type Messages = WhoIsLeader | WhoIsLeaderResponse | Vote | VoteForMe;
+export type Messages = WhoIsLeader | WhoIsLeaderResponse | Vote | VoteForMe | TabIdMessage;

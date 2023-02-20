@@ -5,7 +5,11 @@
         "lib": ["DOM", "DOM.Iterable", "ESNext"],
         "outDir": "./dist",
         "rootDir": "./src",
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "baseUrl":  "./",
+        "paths": {
+            "@/*": ["./src/*"]
+        }
     },
     "include": ["./src"]
 }

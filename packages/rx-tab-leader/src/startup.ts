@@ -30,7 +30,7 @@ const startupTimeout = () => {
 };
 
 subscribeToTopic<WhoIsLeader>('who_is_leader').subscribe(whoIsLeader => {
-    logger.debug(whoIsLeader);
+    logger.debug('whoIsLeaderResponse', whoIsLeader);
     if (!leader.value) {
         logger.info('Ignoring. Not the leader');
         return;

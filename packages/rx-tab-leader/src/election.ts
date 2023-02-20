@@ -14,7 +14,7 @@ let electionTimer: ReturnType<typeof globalThis.setTimeout> | null = null;
 let hasVoted = false;
 
 export const startElection = () => {
-    logger.info('Starting election...');
+    logger.info('Starting new election...');
     if (electionTimer) {
         logger.info('Election already running');
         return;
@@ -72,7 +72,7 @@ const countVotes = () => {
         logger.info(`I am the leader with ${highest} of ${totalVotes}`);
     } else {
         leader.next(false);
-        logger.info(`${highestKey} is the leader with ${highest} of ${totalVotes}`);
+        logger.info(`${highestKey} is the leader with ${highest} of ${totalVotes} votes`);
         logger.info('I am the follower');
     }
 };
@@ -83,6 +83,7 @@ subscribeToTopic<VoteForMe>('vote_for_me').subscribe(voteForMeRequest => {
     //     return;
     // }
     if (!electionTimer) {
+        logger.info('New election requested...');
         hasVoted = false;
         electionTimer = setTimeout(countVotes, ELECTION_TIMEOUT_MAX);
     }

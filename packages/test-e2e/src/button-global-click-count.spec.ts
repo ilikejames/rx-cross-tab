@@ -1,12 +1,14 @@
-import { test, expect, Page, Locator } from '@playwright/test';
+import { test, expect, Page, Locator, BrowserContext } from '@playwright/test';
 import { init } from './config';
 import { waitUntil, log } from './helper';
 
 test.describe('button with global click count', () => {
     let env: Awaited<ReturnType<typeof init>>;
     const selector = 'button:has-text("Click Increments Across All Tabs:")';
+
     test.beforeEach(async ({ page }) => {
         env = await init();
+        await createTabInstanceName(page, 'one');
         await page.goto(env.url);
     });
 
@@ -23,7 +25,7 @@ test.describe('button with global click count', () => {
         }
     });
 
-    test('second instance starts with the correct initial state', async ({
+    test.only('second instance starts with the correct initial state', async ({
         context,
         page: first,
     }) => {
@@ -36,12 +38,18 @@ test.describe('button with global click count', () => {
         expect(await getCount(buttonA)).toBe(2);
 
         log.then('Opening 2nd page');
-        const second = await context.newPage();
+        const second = await getNewInstance(context, 'second');
         try {
+            log.then('Opening second page url');
             await second.goto(env.url);
+            log.then('Getting button');
             const buttonB = await second.locator(selector);
 
-            await waitUntil(async () => (await getCount(buttonB)) === 2);
+            await waitUntil(async () => {
+                const count = await getCount(buttonB);
+                log.data('count =', count);
+                return count === 2;
+            });
             log.data({ A: await getCount(buttonA), B: await getCount(buttonB) });
             expect(await getCount(buttonA)).toBe(2);
             expect(await getCount(buttonB)).toBe(2);
@@ -54,8 +62,7 @@ test.describe('button with global click count', () => {
         page: first,
         context,
     }) => {
-        const second = await context.newPage();
-
+        const second = await getNewInstance(context, 'second');
         try {
             await second.goto(env.url);
             const buttonA = await first.locator(selector);
@@ -88,7 +95,8 @@ test.describe('button with global click count', () => {
         page: first,
         context,
     }) => {
-        const second = await context.newPage();
+        const second = await getNewInstance(context, 'second');
+
         let third: Page | undefined = undefined;
 
         try {
@@ -116,7 +124,8 @@ test.describe('button with global click count', () => {
             expect(await getCount(buttonB)).toBe(3);
 
             log.when('third tab joins');
-            third = await context.newPage();
+            third = await getNewInstance(context, 'third');
+            await third.addInitScript(() => localStorage.setItem('tabId', 'third'));
             await third.goto(env.url);
             const buttonC = await third.locator(selector);
 
@@ -141,4 +150,14 @@ test.describe('button with global click count', () => {
 const getCount = async (locator: Locator) => {
     const value = await locator.textContent();
     return value ? parseInt(/[\d]+/g.exec(value)![0]) : undefined;
+};
+
+const getNewInstance = async (context: BrowserContext, name: string) => {
+    const newInstance = await context.newPage();
+    await createTabInstanceName(newInstance, name);
+    return newInstance;
+};
+
+const createTabInstanceName = async (instance: Page, name: string) => {
+    await instance.addInitScript((name: string) => localStorage.setItem('tabId', name), [name]);
 };

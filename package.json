@@ -16,5 +16,9 @@
   "dependencies": {
     "global": "^4.4.0",
     "validate-npm-package-name": "^4.0.0"
+  },
+  "scripts": {
+    "build": "lerna run build",
+    "start:app": "lerna run start --scope=test-app"
   }
 }

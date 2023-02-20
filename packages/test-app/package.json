@@ -6,6 +6,7 @@
     "license": "MIT",
     "dependencies": {
       "@react-rxjs/core": "^0.9.7",
+      "@tabrx/leader": "*",
       "react": "^18.2.0",
       "react-dom": "^18.2.0",
       "rxjs": "^7.5.5",
@@ -20,7 +21,8 @@
       "vite": "^2.9.12"
     },
     "scripts": {
-      "start": "vite"
+      "build": "vite build",
+      "start": "vite --port=3005"
     }
   }
   

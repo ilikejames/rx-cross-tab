@@ -6,3 +6,5 @@ export const create = () => {
     startSubscriptionChannel();
     startup();
 };
+
+export { leader$ } from './leader';
