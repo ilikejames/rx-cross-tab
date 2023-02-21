@@ -1,13 +1,18 @@
 import {
     BehaviorSubject,
+    combineLatest,
+    concat,
     filter,
     firstValueFrom,
     fromEvent,
     map,
     Observable,
+    of,
+    race,
     shareReplay,
     skip,
     Subscription,
+    switchMap,
     tap,
     timer,
     withLatestFrom,
@@ -29,17 +34,24 @@ import {
     WhoIsLeader,
     WhoIsLeaderResponse,
     LeavingMessage,
+    Heartbeat,
+    HeartbeatResponse,
+    Timestamp,
 } from './messageTypes';
 
 type LeadershipOptions = Omit<ElectionOptions, '___delaySelfVoteForTesting'> & {
     startupTimeout: number;
     channelName: string;
     logger?: LoggerOptions;
+    heartbeatInterval: number;
+    heartbeatTimeout: number;
 };
 
 const defaultSettings: LeadershipOptions = {
     startupTimeout: 50,
     channelName: 'tabrx-leader',
+    heartbeatInterval: 3_000,
+    heartbeatTimeout: 1_000,
     ...defaultElectionOptions,
 };
 
@@ -73,7 +85,7 @@ export class LeadershipSvc {
             this.options.logger,
         );
 
-        // WhoIsLeader
+        // WhoIsLeader: only leader responds
         this.subscription.add(
             this.channel
                 .subscribeToTopic(LeadershipTopicTypes.WhoIsLeader)
@@ -84,6 +96,19 @@ export class LeadershipSvc {
                     map(([message]) => message),
                 )
                 .subscribe(this.handleWhoIsLeader.bind(this)),
+        );
+
+        // Heartbeat: only leader responds
+        this.subscription.add(
+            this.channel
+                .subscribeToTopic(LeadershipTopicTypes.Heartbeat)
+                .pipe(
+                    filter((m): m is Heartbeat => m.topic === LeadershipTopicTypes.Heartbeat),
+                    withLatestFrom(this.leader$),
+                    filter(([_, leader]) => leader.status === LeadershipStatus.LEADER),
+                    map(([message]) => message),
+                )
+                .subscribe(this.handleHeartbeat.bind(this)),
         );
 
         // Leaving instance
@@ -120,6 +145,16 @@ export class LeadershipSvc {
             sessionStorage.setItem('tabId', uuid());
         }
         return sessionStorage.getItem('tabId')!;
+    }
+
+    private handleHeartbeat(message: Heartbeat) {
+        const response: HeartbeatResponse = {
+            correlationId: message.correlationId,
+            topic: LeadershipTopicTypes.HeartbeatResponse,
+            from: this.iam,
+            payload: Date.now() as Timestamp,
+        };
+        this.channel.send(response);
     }
 
     private handleWhoIsLeader(message: WhoIsLeader) {
@@ -164,6 +199,7 @@ export class LeadershipSvc {
 
     public async start() {
         const startTime = Date.now();
+
         try {
             // TODO: can we check for something present e.g. local storage item.
             // no item... go straight to election
@@ -187,7 +223,43 @@ export class LeadershipSvc {
                 status: LeadershipStatus.ELECTING,
             });
             this.election.start();
+        } finally {
+            this.heartbeat();
         }
+    }
+
+    private heartbeat() {
+        this.subscription.add(
+            timer(this.options.heartbeatInterval, this.options.heartbeatInterval)
+                .pipe(
+                    withLatestFrom(this.leader$),
+                    // only when follower
+                    filter(([_, leader]) => leader.status === LeadershipStatus.FOLLOWER),
+                    switchMap(() => {
+                        this.options.logger?.info(loggerName, 'heartbeating');
+                        const time = Date.now() as Timestamp;
+                        const request$ = this.channel.requestResponse({
+                            topic: LeadershipTopicTypes.Heartbeat,
+                            payload: time,
+                        }) as Observable<HeartbeatResponse>;
+                        const timeout$ = timer(this.options.heartbeatTimeout).pipe(
+                            map(() => 'timeout'),
+                        );
+                        return combineLatest([of(time), race(request$, timeout$)]);
+                    }),
+                    tap(([sent, received]) => {
+                        if (received === 'timeout') {
+                            // new election
+                            this.options.logger?.info(loggerName, 'leader is dead.');
+                            this.election.start();
+                            return;
+                        }
+                        const totalTime = Date.now() - sent;
+                        this.options.logger?.info(loggerName, 'heartbeat', 'total =', totalTime);
+                    }),
+                )
+                .subscribe(),
+        );
     }
 
     private askForLeader() {

@@ -5,6 +5,8 @@ export const LeadershipTopicTypes = {
     WhoIsLeader: 'WhoIsLeader',
     WhoIsLeaderResponse: 'WhoIsLeaderResponse',
     Leaving: 'Leaving',
+    Heartbeat: 'Heartbeat',
+    HeartbeatResponse: 'HeartbeatResponse',
 } as const;
 
 export type LeadershipTopics = keyof typeof LeadershipTopicTypes;
@@ -20,4 +22,14 @@ export interface WhoIsLeader extends Message<typeof LeadershipTopicTypes.WhoIsLe
 
 export interface LeavingMessage extends Message<typeof LeadershipTopicTypes.WhoIsLeader> {
     payload: undefined;
+}
+
+export type Timestamp = number & { __timestamp: never };
+
+export interface Heartbeat extends Message<typeof LeadershipTopicTypes.Heartbeat> {
+    payload: Timestamp;
+}
+
+export interface HeartbeatResponse extends Message<typeof LeadershipTopicTypes.HeartbeatResponse> {
+    payload: Timestamp;
 }

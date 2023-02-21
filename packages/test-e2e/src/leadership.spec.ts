@@ -1,6 +1,6 @@
 import { test, expect, Page, BrowserContext } from '@playwright/test';
 import { init } from './config';
-import { waitUntil, log } from './helper';
+import { waitUntil, log, WaitOptions } from './helper';
 
 test.describe('leadership', () => {
     let env: Awaited<ReturnType<typeof init>>;
@@ -99,6 +99,32 @@ test.describe('leadership', () => {
         expect(finalFollowerTabs).toHaveLength(finalInstances.length - 1);
         finalFollowerTabs.every(f => expect(f.leader).toEqual(finalLeaderTab.iam));
     });
+
+    test.only('when a leader "dies"', async ({ context }) => {
+        const tabNames = ['a', 'b', 'c', 'd', 'e'];
+        log.when(`Opening tabs "${tabNames}"`);
+        const instances = await Promise.all(
+            tabNames.map(name => createInstance(env.url, name, context)),
+        );
+        await waitForElectionResults(instances);
+        const initial = await getAllLeadershipStatus(instances);
+
+        const initialLeader = initial.find(r => r.status === 'LEADER')!;
+        const leaderIndex = initial.findIndex(r => r.status === 'LEADER');
+        log.when(`The leader tab ${leaderIndex} "${initialLeader.iam}" dies....`);
+
+        await instances[leaderIndex].close({ runBeforeUnload: false });
+
+        const afterInstances = instances.filter((_, i) => i !== leaderIndex);
+        await waitForLeader(afterInstances, { timeout: 5_000 });
+        const results = await getAllLeadershipStatus(afterInstances);
+
+        expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1);
+        const newLeaderTab = results.find(r => r.status === 'LEADER')!;
+        const followerTabs = results.filter(r => r.status === 'FOLLOWER');
+        expect(followerTabs).toHaveLength(afterInstances.length - 1);
+        followerTabs.every(f => expect(f.leader).toEqual(newLeaderTab.iam));
+    });
 });
 
 const createInstance = async (url: string, name: string, context: BrowserContext) => {
@@ -135,12 +161,12 @@ const waitForElectionResults = async (instances: Page[]) => {
     });
 };
 
-const waitForLeader = async (instances: Page[]) => {
+const waitForLeader = async (instances: Page[], options?: WaitOptions) => {
     log.when('Waiting for election results');
     await waitUntil(async () => {
         const all = await getAllLeadershipStatus(instances, { silent: true });
         return all.some(s => s.status && ['LEADER'].includes(s.status));
-    });
+    }, options);
 };
 
 type LeaderStatus = Awaited<ReturnType<typeof getLeadershipStatus>>;
