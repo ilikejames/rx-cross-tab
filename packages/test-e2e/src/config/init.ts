@@ -3,7 +3,7 @@ import { devServiceProxy } from '@fakehost/utils-app-server';
 
 export const init = async () => {
     // Because we are testing broadcasting between tabs, we need to ensure each set of tests
-    // runs on its own port so the tests are isolated.
+    // runs on its own port and hence "origin" so the tests are isolated.
     const baseUrl = config.use?.baseURL!;
     const proxy = await startProxy(baseUrl);
     return proxy;

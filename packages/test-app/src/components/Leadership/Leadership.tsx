@@ -14,15 +14,15 @@ export const Leadership: FC = () => {
         <section aria-label="Leadership Status">
             <div>
                 <label htmlFor={iamId}>IAM: </label>
-                <span id={iamId}>{leader.iam}</span>
+                <input id={iamId} name="iam" value={leader.iam} disabled={true} />
             </div>
             <div>
                 <label htmlFor={statusId}>Status: </label>
-                <span id={statusId}>{leader.status}</span>
+                <input id={statusId} name="status" value={leader.status} disabled={true} />
             </div>
             <div>
                 <label htmlFor={leaderId}>Leader: </label>
-                <span id={leaderId}>{isElectionResult(leader) ? leader.leaderId : '-'}</span>
+                <input id={leaderId} name="leader" value={isElectionResult(leader) ? leader.leaderId : '-'} disabled={true} />
             </div>
         </section>
     )
