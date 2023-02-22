@@ -2,9 +2,16 @@
     "name": "@tabrx/leader",
     "version": "1.0.0",
     "description": "Elect a tab as leader using raft leader algorithm",
-    "main": "dist/index.js",
-    "private": "false",
+    "main": "dist/index.cjs",
+    "type": "module",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    },
     "types": "dist/index.d.ts",
+    "private": "false",
     "files": [
       "dist", "README.md"
     ],
@@ -21,7 +28,7 @@
       "rxjs": "^7.0.0 || ^6.0.0"
     },
     "scripts": {
-      "build": "rimraf dist && tsc ",
+      "build": "rimraf dist && tsup src/index.ts --format cjs,esm --sourcemap --dts",
       "test": "vitest --run"
     }
   }
