@@ -9,14 +9,19 @@
   "main": "index.js",
   "license": "MIT",
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.53.0",
+    "@typescript-eslint/parser": "^5.53.0",
+    "eslint": "^8.34.0",
+    "eslint-plugin-react": "^7.32.2",
     "lerna": "^5.1.4",
     "rimraf": "^3.0.2",
     "tsup": "^6.6.3",
     "typescript": "^4.7.4"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "scripts": {
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx,.json .",
+    "lint:fix": "lint --fix",
     "build": "lerna run build",
     "start:app": "lerna run start --scope=test-app"
   }
