@@ -11,11 +11,12 @@
   },
   "devDependencies": {
     "@types/node": "^14.0.0",
+    "cross-env": "^7.0.3",
     "typescript": "^4.7.4"
   },
   "scripts": {
     "build": "rimraf dist && tsc ",
     "test": "npx playwright test -c src/config/config.ts",
-    "-pretest": "npx playwright@1.22.2 install"
+    "test:ci": "cross-env BUILT_APP_PATH=../test-app/build npx playwright test -c src/config/config.ts --reporter=line"
   }
 }

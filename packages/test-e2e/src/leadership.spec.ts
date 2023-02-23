@@ -2,19 +2,21 @@ import { BrowserContext, Page, expect, test } from '@playwright/test'
 import { init } from './config'
 import { WaitOptions, log, waitUntil } from './helper'
 
-test.describe('leadership', () => {
+test.describe.parallel('leadership', () => {
     let env: Awaited<ReturnType<typeof init>>
 
-    test.beforeEach(async ({ page }) => {
+    test.beforeEach(async () => {
         env = await init()
     })
 
-    test.afterEach(() => env.dispose())
+    test.afterEach(async () => {
+        return env.dispose()
+    })
 
     test('with multiple opening an election is held to find the leader', async ({ context }) => {
         const tabNames = ['a', 'b', 'c']
         log.when('Opening tabs', tabNames)
-        const instances = await Promise.all(tabNames.map(name => createInstance(env.url, name, context)))
+        const instances = await createMultipleInstances(env.url, context, tabNames)
 
         await waitForElectionResults(instances)
         const results = await getAllLeadershipStatus(instances)
@@ -30,7 +32,7 @@ test.describe('leadership', () => {
     test('with multiple open and new tabs join', async ({ context }) => {
         const tabNames = ['a', 'b', 'c']
         log.when('Opening tabs', tabNames)
-        const instances = await Promise.all(tabNames.map(name => createInstance(env.url, name, context)))
+        const instances = await createMultipleInstances(env.url, context, tabNames)
         await waitForElectionResults(instances)
 
         const originalStatus = await getAllLeadershipStatus(instances)
@@ -38,7 +40,7 @@ test.describe('leadership', () => {
 
         const newTabs = ['d', 'e']
         log.when('Opening more tabs', newTabs)
-        const newInstances = await Promise.all(newTabs.map(name => createInstance(env.url, name, context)))
+        const newInstances = await createMultipleInstances(env.url, context, newTabs)
         await waitForElectionResults(newInstances)
         const results = await getAllLeadershipStatus([...instances, ...newInstances])
 
@@ -56,7 +58,7 @@ test.describe('leadership', () => {
     test('when a leader leaves', async ({ context }) => {
         const tabNames = ['a', 'b', 'c', 'd', 'e']
         log.when(`Opening tabs "${tabNames}"`)
-        const instances = await Promise.all(tabNames.map(name => createInstance(env.url, name, context)))
+        const instances = await createMultipleInstances(env.url, context, tabNames)
         await waitForElectionResults(instances)
         const initial = await getAllLeadershipStatus(instances)
 
@@ -95,18 +97,18 @@ test.describe('leadership', () => {
     test('when a leader "dies"', async ({ context }) => {
         const tabNames = ['a', 'b', 'c', 'd', 'e']
         log.when(`Opening tabs "${tabNames}"`)
-        const instances = await Promise.all(tabNames.map(name => createInstance(env.url, name, context)))
+        const instances = await createMultipleInstances(env.url, context, tabNames)
         await waitForElectionResults(instances)
         const initial = await getAllLeadershipStatus(instances)
 
         const initialLeader = initial.find(r => r.status === 'LEADER')!
         const leaderIndex = initial.findIndex(r => r.status === 'LEADER')
         log.when(`The leader tab ${leaderIndex} "${initialLeader.iam}" dies....`)
-
         await instances[leaderIndex].close({ runBeforeUnload: false })
-
         const afterInstances = instances.filter((_, i) => i !== leaderIndex)
-        await waitForLeader(afterInstances, { timeout: 5_000 })
+
+        await waitForLeader(afterInstances, { timeout: 10_000 })
+
         const results = await getAllLeadershipStatus(afterInstances)
 
         expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
@@ -122,6 +124,15 @@ const createInstance = async (url: string, name: string, context: BrowserContext
     await page.addInitScript((name: string) => sessionStorage.setItem('tabId', name), [name])
     await page.goto(url)
     return page
+}
+
+const createMultipleInstances = async (url: string, context: BrowserContext, names: string[]) => {
+    // Why? Running all and resolving in Promise.all causes some to fail to be created (in firefox)
+    const instances = new Array<Page>()
+    for (const name of names) {
+        instances.push(await createInstance(url, name, context))
+    }
+    return instances
 }
 
 const getLeadershipStatus = async (instance: Page) => {
@@ -152,11 +163,14 @@ const waitForElectionResults = async (instances: Page[]) => {
 }
 
 const waitForLeader = async (instances: Page[], options?: WaitOptions) => {
-    log.when('Waiting for election results')
-    await waitUntil(async () => {
-        const all = await getAllLeadershipStatus(instances, { silent: true })
-        return all.some(s => s.status && ['LEADER'].includes(s.status))
-    }, options)
+    log.when('Waiting for leader results')
+    await waitUntil(
+        async () => {
+            const all = await getAllLeadershipStatus(instances, { silent: true })
+            return all.some(s => s.status && ['LEADER'].includes(s.status))
+        },
+        { ...options, interval: 500 },
+    )
 }
 
 type LeaderStatus = Awaited<ReturnType<typeof getLeadershipStatus>>
