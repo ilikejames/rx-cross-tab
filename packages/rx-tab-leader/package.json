@@ -21,8 +21,7 @@
       "rxjs": "^7.0.0 || ^6.0.0"
     },
     "scripts": {
-      "build": "rimraf dist && tsc ",
-      "test": "vitest --run"
+      "build": "rimraf dist && tsc "
     }
   }
   

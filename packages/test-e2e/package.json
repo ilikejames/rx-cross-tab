@@ -5,17 +5,18 @@
   "private": "true",
   "license": "MIT",
   "dependencies": {
-    "@playwright/test": "^1.22.2",
+    "@playwright/test": "^1.31.1",
     "@fakehost/utils-app-server": "^0.0.18",
     "chalk": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.0.0",
+    "cross-env": "^7.0.3",
     "typescript": "^4.7.4"
   },
   "scripts": {
     "build": "rimraf dist && tsc ",
-    "test": "npx playwright test -c src/config/config.ts",
-    "-pretest": "npx playwright@1.22.2 install"
+    "e2e": "npx playwright test -c src/config/config.ts",
+    "e2e:ci": "cross-env BUILT_APP_PATH=../test-app/build npx playwright test -c src/config/config.ts --reporter=line --retries=1"
   }
 }

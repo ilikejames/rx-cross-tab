@@ -6,6 +6,8 @@ export const leadershipSvc = new LeadershipSvc({
         debug: console.debug,
         info: console.info,
     },
+    heartbeatInterval: 1000,
+    heartbeatTimeout: 900,
 })
 leadershipSvc.start()
 

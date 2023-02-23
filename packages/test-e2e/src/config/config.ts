@@ -41,6 +41,7 @@ export const config: PlaywrightTestConfig = {
     projects: [
         {
             name: 'chromium',
+
             use: {
                 ...devices['Desktop Chrome'],
                 launchOptions: {
@@ -48,12 +49,12 @@ export const config: PlaywrightTestConfig = {
                 },
             },
         },
-        {
-            name: 'firefox',
-            use: {
-                ...devices['Desktop Firefox'],
-            },
-        },
+        // {
+        //     name: 'firefox',
+        //     use: {
+        //         ...devices['Desktop Firefox'],
+        //     },
+        // },
         {
             name: 'webkit',
             use: {

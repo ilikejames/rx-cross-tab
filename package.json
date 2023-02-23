@@ -27,7 +27,8 @@
   "scripts": {
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "lint:fix": "eslint --ext .js,.jsx,.ts,.tsx \".\" --fix",
-    "build": "lerna run build",
+    "build": "lerna run --stream build",
+    "test": "lerna run --parallel test",
     "start:app": "lerna run start --scope=test-app"
   }
 }

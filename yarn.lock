@@ -1692,13 +1692,15 @@
   dependencies:
     "@octokit/openapi-types" "^12.4.0"
 
-"@playwright/test@^1.22.2":
-  version "1.22.2"
-  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.22.2.tgz#b848f25f8918140c2d0bae8e9227a40198f2dd4a"
-  integrity sha512-cCl96BEBGPtptFz7C2FOSN3PrTnJ3rPpENe+gYCMx4GNNDlN4tmo2D89y13feGKTMMAIVrXfSQ/UmaQKLy1XLA==
+"@playwright/test@^1.31.1":
+  version "1.31.1"
+  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.31.1.tgz#39d6873dc46af135f12451d79707db7d1357455d"
+  integrity sha512-IsytVZ+0QLDh1Hj83XatGp/GsI1CDJWbyDaBGbainsh0p2zC7F4toUocqowmjS6sQff2NGT3D9WbDj/3K2CJiA==
   dependencies:
     "@types/node" "*"
-    playwright-core "1.22.2"
+    playwright-core "1.31.1"
+  optionalDependencies:
+    fsevents "2.3.2"
 
 "@react-rxjs/core@^0.9.7":
   version "0.9.7"
@@ -2803,7 +2805,14 @@ create-require@^1.1.0:
   resolved "https://registry.yarnpkg.com/create-require/-/create-require-1.1.1.tgz#c1d7e8f1e5f6cfc9ff65f9cd352d37348756c333"
   integrity sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==
 
-cross-spawn@^7.0.2, cross-spawn@^7.0.3:
+cross-env@^7.0.3:
+  version "7.0.3"
+  resolved "https://registry.yarnpkg.com/cross-env/-/cross-env-7.0.3.tgz#865264b29677dc015ba8418918965dd232fc54cf"
+  integrity sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==
+  dependencies:
+    cross-spawn "^7.0.1"
+
+cross-spawn@^7.0.1, cross-spawn@^7.0.2, cross-spawn@^7.0.3:
   version "7.0.3"
   resolved "https://registry.yarnpkg.com/cross-spawn/-/cross-spawn-7.0.3.tgz#f73a85b9d5d41d045551c177e2882d4ac85728a6"
   integrity sha512-iRDPJKUPVEND7dHPO8rkbOnPpyDygcDFtWjpeWNCgy8WP2rXcxXL8TskReQl6OrB2G7+UJrags1q15Fudc7G6w==
@@ -3759,7 +3768,7 @@ fs.realpath@^1.0.0:
   resolved "https://registry.yarnpkg.com/fs.realpath/-/fs.realpath-1.0.0.tgz#1504ad2523158caa40db4a2787cb01411994ea4f"
   integrity sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==
 
-fsevents@~2.3.2:
+fsevents@2.3.2, fsevents@~2.3.2:
   version "2.3.2"
   resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.2.tgz#8a526f78b8fdf4623b709e0b975c52c24c02fd1a"
   integrity sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==
@@ -5813,10 +5822,10 @@ pkg-dir@^4.2.0:
   dependencies:
     find-up "^4.0.0"
 
-playwright-core@1.22.2:
-  version "1.22.2"
-  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.22.2.tgz#ed2963d79d71c2a18d5a6fd25b60b9f0a344661a"
-  integrity sha512-w/hc/Ld0RM4pmsNeE6aL/fPNWw8BWit2tg+TfqJ3+p59c6s3B6C8mXvXrIPmfQEobkcFDc+4KirNzOQ+uBSP1Q==
+playwright-core@1.31.1:
+  version "1.31.1"
+  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.31.1.tgz#4deeebbb8fb73b512593fe24bea206d8fd85ff7f"
+  integrity sha512-JTyX4kV3/LXsvpHkLzL2I36aCdml4zeE35x+G5aPc4bkLsiRiQshU5lWeVpHFAuC8xAcbI6FDcw/8z3q2xtJSQ==
 
 postcss-load-config@^3.0.1:
   version "3.1.4"

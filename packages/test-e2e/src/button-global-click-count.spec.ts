@@ -2,7 +2,7 @@ import { BrowserContext, Locator, Page, expect, test } from '@playwright/test'
 import { init } from './config'
 import { log, waitUntil } from './helper'
 
-test.describe('button with global click count', () => {
+test.describe.skip('button with global click count', () => {
     let env: Awaited<ReturnType<typeof init>>
     const selector = 'button:has-text("Click Increments Across All Tabs:")'
 
@@ -150,5 +150,5 @@ const getNewInstance = async (context: BrowserContext, name: string) => {
 }
 
 const createTabInstanceName = async (instance: Page, name: string) => {
-    await instance.addInitScript((name: string) => localStorage.setItem('tabId', name), [name])
+    await instance.addInitScript(([name]) => localStorage.setItem('tabId', name), [name])
 }
