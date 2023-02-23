@@ -1,2 +1,2 @@
-export * from './types';
-export * from './LeadshipSvc/LeadershipSvc';
+export * from './types'
+export * from './LeadshipSvc/LeadershipSvc'

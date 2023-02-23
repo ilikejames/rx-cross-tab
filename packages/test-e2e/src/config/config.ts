@@ -1,8 +1,7 @@
-import type { PlaywrightTestConfig } from '@playwright/test';
-import { devices } from '@playwright/test';
-import { resolve } from 'path';
+import type { PlaywrightTestConfig } from '@playwright/test'
+import { devices } from '@playwright/test'
 
-const PORT = 3005;
+const PORT = 3005
 
 export const config: PlaywrightTestConfig = {
     testDir: '../',
@@ -45,25 +44,22 @@ export const config: PlaywrightTestConfig = {
             use: {
                 ...devices['Desktop Chrome'],
                 launchOptions: {
-                    args:
-                        process.env.OPEN_DEVTOOLS === 'true'
-                            ? ['--auto-open-devtools-for-tabs']
-                            : [],
+                    args: process.env.OPEN_DEVTOOLS === 'true' ? ['--auto-open-devtools-for-tabs'] : [],
                 },
             },
         },
-        // {
-        //     name: 'firefox',
-        //     use: {
-        //         ...devices['Desktop Firefox'],
-        //     },
-        // },
-        // {
-        //     name: 'webkit',
-        //     use: {
-        //         ...devices['Desktop Safari'],
-        //     },
-        // },
+        {
+            name: 'firefox',
+            use: {
+                ...devices['Desktop Firefox'],
+            },
+        },
+        {
+            name: 'webkit',
+            use: {
+                ...devices['Desktop Safari'],
+            },
+        },
     ],
 
     /* Folder for test artifacts such as screenshots, videos, traces, etc. */
@@ -76,6 +72,6 @@ export const config: PlaywrightTestConfig = {
     //     port: PORT,
     //     reuseExistingServer: true,
     // },
-};
+}
 
-export default config;
+export default config

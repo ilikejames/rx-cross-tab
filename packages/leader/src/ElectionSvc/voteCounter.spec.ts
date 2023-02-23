@@ -1,6 +1,6 @@
-import { describe, test, expect } from 'vitest';
-import { voteCounter } from './voteCounter';
-import { ElectionResults, VoteBy, VoteFor } from './types';
+import { describe, expect, test } from 'vitest'
+import { ElectionResults, VoteBy, VoteFor } from './types'
+import { voteCounter } from './voteCounter'
 
 describe('voteCounter', () => {
     test('winner', () => {
@@ -8,8 +8,8 @@ describe('voteCounter', () => {
             ['a', 'a'],
             ['b', 'a'],
             ['c', 'b'],
-        ] as [VoteBy, VoteFor][]);
-        const result = voteCounter('a', votes);
+        ] as [VoteBy, VoteFor][])
+        const result = voteCounter('a', votes)
 
         const expectedResult: ElectionResults = {
             type: 'Won',
@@ -21,17 +21,17 @@ describe('voteCounter', () => {
             ] as [VoteFor, VoteBy[]][]),
             totalVotes: votes.size,
             allVoters: ['a', 'b', 'c'],
-        };
-        expect(result).toEqual(expectedResult);
-    });
+        }
+        expect(result).toEqual(expectedResult)
+    })
 
     test('loser', () => {
         const votes = new Map([
             ['a', 'a'],
             ['b', 'a'],
             ['c', 'b'],
-        ] as [VoteBy, VoteFor][]);
-        const result = voteCounter('b', votes);
+        ] as [VoteBy, VoteFor][])
+        const result = voteCounter('b', votes)
 
         const expectedResult: ElectionResults = {
             type: 'Lost',
@@ -43,9 +43,9 @@ describe('voteCounter', () => {
                 ['b', ['c']],
             ] as [VoteFor, VoteBy[]][]),
             allVoters: ['a', 'b', 'c'],
-        };
-        expect(result).toEqual(expectedResult);
-    });
+        }
+        expect(result).toEqual(expectedResult)
+    })
 
     test('tied', () => {
         const votes = new Map([
@@ -54,8 +54,8 @@ describe('voteCounter', () => {
             ['c', 'a'],
             ['d', 'b'],
             ['e', 'c'],
-        ] as [VoteBy, VoteFor][]);
-        const result = voteCounter('a', votes);
+        ] as [VoteBy, VoteFor][])
+        const result = voteCounter('a', votes)
         const expectedResult: ElectionResults = {
             type: 'Tied',
             winnerVotes: 2,
@@ -66,7 +66,7 @@ describe('voteCounter', () => {
                 ['c', ['e']],
             ] as [VoteFor, VoteBy[]][]),
             allVoters: ['a', 'b', 'c', 'd', 'e'],
-        };
-        expect(result).toEqual(expectedResult);
-    });
-});
+        }
+        expect(result).toEqual(expectedResult)
+    })
+})

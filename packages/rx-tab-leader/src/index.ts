@@ -1,2 +1,2 @@
-export * from './startup';
-export { leader$ } from './leader';
+export * from './startup'
+export { leader$ } from './leader'

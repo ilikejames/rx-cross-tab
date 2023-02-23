@@ -1,12 +1,12 @@
-import { BroadcastChannel } from 'broadcast-channel';
-import { Subject } from 'rxjs';
-import { share, take } from 'rxjs/operators';
-import { settings } from '../settings';
-import { flatten } from 'lodash';
-import { leader$ } from '../leader';
-import { rootLogger } from './logger';
+import { BroadcastChannel } from 'broadcast-channel'
+import { flatten } from 'lodash'
+import { Subject } from 'rxjs'
+import { share, take } from 'rxjs/operators'
+import { leader$ } from '../leader'
+import { settings } from '../settings'
+import { rootLogger } from './logger'
 
-const logger = rootLogger.createLogger('request-channel');
+const logger = rootLogger.createLogger('request-channel')
 
 /**
  * Communication network for requests to different streams.
@@ -14,89 +14,89 @@ const logger = rootLogger.createLogger('request-channel');
  * And keeps a map of required subscriptions for a newly elected leader.
  */
 
-const requestEvent = new Subject<Request>();
+const requestEvent = new Subject<Request>()
 
 export interface Request {
-    id: string;
-    name: string;
-    action: 'subscribe' | 'unsubscribe';
-    count?: number;
+    id: string
+    name: string
+    action: 'subscribe' | 'unsubscribe'
+    count?: number
 }
 
-const subscriptionRequests = new Map<string, Request[]>();
+const subscriptionRequests = new Map<string, Request[]>()
 
-logger.info(`Creating channel "${settings.subscriptionChannel}"`);
-let channel: BroadcastChannel<Request>;
+logger.info(`Creating channel "${settings.subscriptionChannel}"`)
+let channel: BroadcastChannel<Request>
 
-export const requestEvent$ = requestEvent.pipe(share());
+export const requestEvent$ = requestEvent.pipe(share())
 
 export const startSubscriptionChannel = () => {
     if (!channel) {
-        channel = new BroadcastChannel<Request>(settings.subscriptionChannel);
+        channel = new BroadcastChannel<Request>(settings.subscriptionChannel)
 
         /**
          * Subscribe to request from other tabs.
          * When a instance goes from follower -> leader, we use this to know what to sub and post
          */
         channel.addEventListener('message', e => {
-            logger.debug('Message', e);
-            onRequest(e);
-        });
+            logger.debug('Message', e)
+            onRequest(e)
+        })
     }
-    return () => channel && channel.close();
-};
+    return () => channel && channel.close()
+}
 
-requestEvent$.subscribe();
+requestEvent$.subscribe()
 
 export const request = (request: Request) => {
-    logger.debug('Broadcasting to other nodes a new subscription request', request);
-    channel.postMessage(request);
+    logger.debug('Broadcasting to other nodes a new subscription request', request)
+    channel.postMessage(request)
     // When leader, this will not receive
     leader$.pipe(take(1)).subscribe(leader => {
         if (leader) {
-            logger.debug('Broadcasting to self', request);
-            onRequest(request);
+            logger.debug('Broadcasting to self', request)
+            onRequest(request)
         }
-    });
-};
+    })
+}
 
 export const getSubscriptionRequests = (): Request[] => {
-    return flatten(Array.from(subscriptionRequests.values()));
-};
+    return flatten(Array.from(subscriptionRequests.values()))
+}
 
 const onRequest = (request: Request) => {
-    const requests = subscriptionRequests.get(request.name) || [];
-    const existing = requests.find(x => x.id === request.id);
-    const other = requests.filter(x => x.id !== request.id);
+    const requests = subscriptionRequests.get(request.name) || []
+    const existing = requests.find(x => x.id === request.id)
+    const other = requests.filter(x => x.id !== request.id)
 
-    let count = 0;
+    let count = 0
 
     switch (request.action) {
         case 'subscribe': {
             if (existing) {
-                count = (existing.count ?? 0) + 1;
-                logger.debug('Inc existing subscriptions', request.name, count);
-                subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
+                count = (existing.count ?? 0) + 1
+                logger.debug('Inc existing subscriptions', request.name, count)
+                subscriptionRequests.set(request.name, [...other, { ...existing, count }])
             } else {
-                count = 1;
-                logger.debug('First subscription', request.name);
-                subscriptionRequests.set(request.name, [...other, { ...request, count }]);
+                count = 1
+                logger.debug('First subscription', request.name)
+                subscriptionRequests.set(request.name, [...other, { ...request, count }])
             }
-            break;
+            break
         }
         case 'unsubscribe': {
-            count = existing?.count ? existing.count : 0;
+            count = existing?.count ? existing.count : 0
             if (existing && count > 1) {
-                count -= 1;
-                logger.debug('Dec subscriptions', request.name, count);
-                subscriptionRequests.set(request.name, [...other, { ...existing, count }]);
+                count -= 1
+                logger.debug('Dec subscriptions', request.name, count)
+                subscriptionRequests.set(request.name, [...other, { ...existing, count }])
             } else {
-                count = 0;
-                logger.debug('Cancelling subscriptions', request.name);
-                subscriptionRequests.set(request.name, other);
+                count = 0
+                logger.debug('Cancelling subscriptions', request.name)
+                subscriptionRequests.set(request.name, other)
             }
         }
     }
 
-    requestEvent.next({ ...request, count });
-};
+    requestEvent.next({ ...request, count })
+}

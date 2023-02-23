@@ -1,1 +1,1 @@
-export * from './LeadershipSvc';
+export * from './LeadershipSvc'

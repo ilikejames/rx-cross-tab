@@ -1,2 +1,2 @@
-export { ElectionSvc, type ElectionOptions, defaultElectionOptions } from './ElectionSvc';
-export { type ElectionResults, ElectionResultTypes } from './types';
+export { ElectionSvc, type ElectionOptions, defaultElectionOptions } from './ElectionSvc'
+export { type ElectionResults, ElectionResultTypes } from './types'

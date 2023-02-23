@@ -1,6 +1,6 @@
 {
   "parser": "typescript",
-  "printWidth": 100,
+  "printWidth": 140,
   "tabWidth": 4,
   "useTabs": false,
   "semi": false,
@@ -8,5 +8,20 @@
   "singleQuote": true,
   "trailingComma": "all",
   "bracketSpacing": true,
-  "jsxBracketSameLine": false
+  "jsxBracketSameLine": false,
+  "importOrder": ["^@[az]*/(.*)$", "^[.]"],
+  "importOrderSeparation": false,
+  "importOrderSortSpecifiers": true,
+  "endOfLine": "lf",
+  "overrides": [
+    {
+      "files": "*.json",
+      "options": {
+        "parser": "json",
+        "tabWidth": 2,
+        "trailingComma": "none",
+        "singleQuote": false
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
+import { isElectionResult } from '@tabrx/leader'
 import React, { FC, useId } from 'react'
 import { useLeader } from '@/api/useLeader'
-import { isElectionResult } from '@tabrx/leader'
 
 export const Leadership: FC = () => {
     const leader = useLeader()
@@ -27,4 +27,3 @@ export const Leadership: FC = () => {
         </section>
     )
 }
-

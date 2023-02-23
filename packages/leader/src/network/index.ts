@@ -1,1 +1,1 @@
-export * from './ChannelNetwork';
+export * from './ChannelNetwork'

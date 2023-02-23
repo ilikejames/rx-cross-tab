@@ -1,5 +1,5 @@
-import { Message } from '../network/types';
-import { LeaderStatus } from '../types';
+import { Message } from '../network/types'
+import { LeaderStatus } from '../types'
 
 export const LeadershipTopicTypes = {
     WhoIsLeader: 'WhoIsLeader',
@@ -7,29 +7,28 @@ export const LeadershipTopicTypes = {
     Leaving: 'Leaving',
     Heartbeat: 'Heartbeat',
     HeartbeatResponse: 'HeartbeatResponse',
-} as const;
+} as const
 
-export type LeadershipTopics = keyof typeof LeadershipTopicTypes;
+export type LeadershipTopics = keyof typeof LeadershipTopicTypes
 
-export interface WhoIsLeaderResponse
-    extends Message<typeof LeadershipTopicTypes.WhoIsLeaderResponse> {
-    payload: LeaderStatus;
+export interface WhoIsLeaderResponse extends Message<typeof LeadershipTopicTypes.WhoIsLeaderResponse> {
+    payload: LeaderStatus
 }
 
 export interface WhoIsLeader extends Message<typeof LeadershipTopicTypes.WhoIsLeader> {
-    payload: undefined;
+    payload: undefined
 }
 
 export interface LeavingMessage extends Message<typeof LeadershipTopicTypes.WhoIsLeader> {
-    payload: undefined;
+    payload: undefined
 }
 
-export type Timestamp = number & { __timestamp: never };
+export type Timestamp = number & { __timestamp: never }
 
 export interface Heartbeat extends Message<typeof LeadershipTopicTypes.Heartbeat> {
-    payload: Timestamp;
+    payload: Timestamp
 }
 
 export interface HeartbeatResponse extends Message<typeof LeadershipTopicTypes.HeartbeatResponse> {
-    payload: Timestamp;
+    payload: Timestamp
 }

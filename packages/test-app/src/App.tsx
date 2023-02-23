@@ -1,6 +1,6 @@
-import { FC } from 'react';
-import { IncrementingButton } from './IncrementingButton';
+import React, { FC } from 'react'
 import { Leadership } from '@/components/Leadership'
+import { IncrementingButton } from './IncrementingButton'
 
 export const App: FC = () => {
     return (
@@ -12,5 +12,5 @@ export const App: FC = () => {
             </p>
             <IncrementingButton />
         </div>
-    );
-};
+    )
+}

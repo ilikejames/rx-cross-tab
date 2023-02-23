@@ -1,1 +1,1 @@
-export { leader$ } from 'rx-tab-leader';
+export { leader$ } from 'rx-tab-leader'

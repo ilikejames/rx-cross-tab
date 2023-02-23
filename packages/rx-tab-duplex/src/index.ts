@@ -1,10 +1,11 @@
-export * from './duplex';
-import { startSubscriptionChannel } from './internals/subscriptionRequests';
-import { startup } from 'rx-tab-leader';
+import { startup } from 'rx-tab-leader'
+import { startSubscriptionChannel } from './internals/subscriptionRequests'
+
+export * from './duplex'
 
 export const create = () => {
-    startSubscriptionChannel();
-    startup();
-};
+    startSubscriptionChannel()
+    startup()
+}
 
-export { leader$ } from './leader';
+export { leader$ } from './leader'
