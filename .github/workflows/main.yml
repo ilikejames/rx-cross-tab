@@ -42,7 +42,9 @@ jobs:
       - name: e2e
         run: |
           npx playwright install
-          yarn --cwd packages/test-e2e e2e:ci
+          # HOME=/root is specific workaround for firefox 
+          # see: https://github.com/microsoft/playwright/issues/6500
+          HOME=/root yarn --cwd packages/test-e2e e2e:ci --workers=1
 
       - name: Archive E2E artifacts
         if: always()

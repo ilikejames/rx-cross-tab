@@ -49,12 +49,13 @@ export const config: PlaywrightTestConfig = {
                 },
             },
         },
-        // {
-        //     name: 'firefox',
-        //     use: {
-        //         ...devices['Desktop Firefox'],
-        //     },
-        // },
+        {
+            name: 'firefox',
+            use: {
+                headless: true,
+                ...devices['Desktop Firefox'],
+            },
+        },
         {
             name: 'webkit',
             use: {

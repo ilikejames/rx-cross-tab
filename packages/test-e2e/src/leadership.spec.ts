@@ -69,7 +69,7 @@ test.describe.parallel('leadership', () => {
         await instances[leaderIndex].close({ runBeforeUnload: true })
 
         const afterInstances = instances.filter((_, i) => i !== leaderIndex)
-        await waitForLeader(afterInstances)
+        await waitForLeaderConsensus(afterInstances)
         const results = await getAllLeadershipStatus(afterInstances)
 
         expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
@@ -84,7 +84,7 @@ test.describe.parallel('leadership', () => {
         await afterInstances[newLeaderIndex].close({ runBeforeUnload: true })
 
         const finalInstances = afterInstances.filter((_, i) => i !== newLeaderIndex)
-        await waitForLeader(finalInstances)
+        await waitForLeaderConsensus(finalInstances)
         const finalResults = await getAllLeadershipStatus(finalInstances)
 
         expect(finalResults.filter(r => r.status === 'LEADER')).toHaveLength(1)
@@ -107,7 +107,7 @@ test.describe.parallel('leadership', () => {
         await instances[leaderIndex].close({ runBeforeUnload: false })
         const afterInstances = instances.filter((_, i) => i !== leaderIndex)
 
-        await waitForLeader(afterInstances, { timeout: 10_000 })
+        await waitForLeaderConsensus(afterInstances, { timeout: 10_000 })
 
         const results = await getAllLeadershipStatus(afterInstances)
 
@@ -162,12 +162,13 @@ const waitForElectionResults = async (instances: Page[]) => {
     })
 }
 
-const waitForLeader = async (instances: Page[], options?: WaitOptions) => {
-    log.when('Waiting for leader results')
+const waitForLeaderConsensus = async (instances: Page[], options?: WaitOptions) => {
+    log.when('Waiting for new leader consensus')
     await waitUntil(
         async () => {
-            const all = await getAllLeadershipStatus(instances, { silent: true })
-            return all.some(s => s.status && ['LEADER'].includes(s.status))
+            const status = await getAllLeadershipStatus(instances, { silent: true })
+            const leader = status.find(s => s.status && ['LEADER'].includes(s.status))
+            return Boolean(leader && status.every(s => s.leader === leader.iam))
         },
         { ...options, interval: 500 },
     )
