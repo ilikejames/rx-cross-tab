@@ -13,6 +13,41 @@ test.describe.parallel('leadership', () => {
         return env.dispose()
     })
 
+    test('instances go through the startup process', async ({ context }) => {
+        const tabNames = ['a', 'b', 'c']
+        log.when('Opening tabs', tabNames)
+        const instances = await createMultipleInstances(env.url, context, tabNames, {
+            electionTimeoutMin: 2_000,
+            startupTimeout: 2_000,
+        })
+
+        const waitOptions: WaitOptions = { interval: 500, timeout: 5_000 }
+
+        log.then('Starts "INITIALIZING"')
+        await waitUntil(async () => {
+            const status = await getAllLeadershipStatus(instances, { silent: true })
+            return status.every(v => v.status === 'INITIALIZING')
+        }, waitOptions)
+        const initial = await getAllLeadershipStatus(instances)
+        initial.forEach(({ leader }) => expect(leader).toBe('-'))
+
+        log.then('Then "ELECTING"')
+        await waitUntil(async () => {
+            const status = await getAllLeadershipStatus(instances, { silent: true })
+            return status.every(v => v.status === 'ELECTING')
+        }, waitOptions)
+        const electing = await getAllLeadershipStatus(instances)
+        electing.forEach(({ leader }) => expect(leader).toBe('-'))
+
+        log.then('A leader is elected')
+        await waitUntil(async () => {
+            const status = await getAllLeadershipStatus(instances, { silent: true })
+            return status.every(v => v.status !== 'ELECTING' && v.status !== 'INITIALIZING')
+        }, waitOptions)
+        const consensus = await getAllLeadershipStatus(instances)
+        consensus.forEach(({ leader }) => expect(leader).toMatch(/^[a|b|c]$/))
+    })
+
     test('with multiple opening an election is held to find the leader', async ({ context }) => {
         const tabNames = ['a', 'b', 'c']
         log.when('Opening tabs', tabNames)
@@ -38,7 +73,7 @@ test.describe.parallel('leadership', () => {
         const originalStatus = await getAllLeadershipStatus(instances)
         const originalLeader = originalStatus.find(r => r.status === 'LEADER')!
 
-        const newTabs = ['d', 'e']
+        const newTabs = ['new-d', 'new- e']
         log.when('Opening more tabs', newTabs)
         const newInstances = await createMultipleInstances(env.url, context, newTabs)
         await waitForElectionResults(newInstances)
@@ -119,18 +154,36 @@ test.describe.parallel('leadership', () => {
     })
 })
 
-const createInstance = async (url: string, name: string, context: BrowserContext) => {
+const createInstance = async (url: string, context: BrowserContext, options: InstanceOptions & { name: string }) => {
     const page = await context.newPage()
-    await page.addInitScript(([name]) => sessionStorage.setItem('tabId', name), [name])
+
+    const testOptions: (keyof InstanceOptions)[] = ['channelName', 'electionTimeoutMin', 'startupTimeout']
+    await page.addInitScript(([name]) => sessionStorage.setItem('tabId', name), [options.name])
+    await Promise.all(
+        testOptions.map(key => {
+            if (options[key]) {
+                return page.addInitScript(([key, value]) => sessionStorage.setItem(`test-${key}`, `${value}`), [key, options[key]])
+            }
+        }),
+    )
     await page.goto(url)
     return page
 }
 
-const createMultipleInstances = async (url: string, context: BrowserContext, names: string[]) => {
-    // Why? Running all and resolving in Promise.all causes some to fail to be created (in firefox)
+type InstanceOptions = {
+    channelName?: string
+    electionTimeoutMin?: number
+    startupTimeout?: number
+}
+
+const createMultipleInstances = async (url: string, context: BrowserContext, names: string[], options: InstanceOptions = {}) => {
+    // Why create individually?
+    // Running all and resolving in Promise.all causes some
+    // to fail to be created (in firefox)
     const instances = new Array<Page>()
     for (const name of names) {
-        instances.push(await createInstance(url, name, context))
+        const instance = await createInstance(url, context, { ...options, name })
+        instances.push(instance)
     }
     return instances
 }
@@ -164,13 +217,15 @@ const waitForElectionResults = async (instances: Page[]) => {
 
 const waitForLeaderConsensus = async (instances: Page[], options?: WaitOptions) => {
     log.when('Waiting for new leader consensus')
+    let attempts = 0
     await waitUntil(
         async () => {
-            const status = await getAllLeadershipStatus(instances, { silent: true })
+            log.debug('Attempt', ++attempts)
+            const status = await getAllLeadershipStatus(instances, { silent: false })
             const leader = status.find(s => s.status && ['LEADER'].includes(s.status))
             return Boolean(leader && status.every(s => s.leader === leader.iam))
         },
-        { ...options, interval: 500 },
+        { interval: 500, ...options },
     )
 }
 

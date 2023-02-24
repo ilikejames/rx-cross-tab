@@ -11,7 +11,6 @@ import {
     race,
     shareReplay,
     switchMap,
-    tap,
     timer,
     withLatestFrom,
 } from 'rxjs'
@@ -31,7 +30,7 @@ import {
     WhoIsLeaderResponse,
 } from './messageTypes'
 
-type LeadershipOptions = Omit<ElectionOptions, '___delaySelfVoteForTesting'> & {
+export type LeadershipOptions = Omit<ElectionOptions, '___delaySelfVoteForTesting'> & {
     startupTimeout: number
     channelName: string
     logger?: LoggerOptions
@@ -62,6 +61,13 @@ export class LeadershipSvc {
         })
         this.leader$ = this.leader.pipe(shareReplay(1))
         this.subscription = this.leader$.subscribe()
+
+        // remove undefined values
+        options &&
+            Object.keys(options).forEach(k => {
+                const key = k as keyof LeadershipOptions
+                if (options[key] === undefined) delete options[key]
+            })
 
         this.options = { ...defaultSettings, ...options }
         this.channel = new ChannelNetwork<LeadershipTopics>(this.options.channelName, this.iam, this.options.logger)
@@ -171,6 +177,8 @@ export class LeadershipSvc {
             leaderId: results.winner!,
         })
 
+        this.heartbeat()
+
         this.options.logger?.info(loggerName, `I am ${results.type === ElectionResultTypes.Won ? 'the leader' : 'a follower'}`)
     }
 
@@ -181,7 +189,7 @@ export class LeadershipSvc {
             // TODO: can we check for something present e.g. local storage item.
             // no item... go straight to election
             this.options.logger?.info(loggerName, 'Starting...')
-            const timeoutMs = 10 + Math.random() * this.options.startupTimeout
+            const timeoutMs = this.options.startupTimeout
 
             this.options.logger?.debug(loggerName, `Waiting for ${LeadershipTopicTypes.WhoIsLeaderResponse} within ${timeoutMs}ms`)
 
@@ -197,8 +205,6 @@ export class LeadershipSvc {
                 status: LeadershipStatus.ELECTING,
             })
             this.election.start()
-        } finally {
-            this.heartbeat()
         }
     }
 
@@ -219,18 +225,20 @@ export class LeadershipSvc {
                         const timeout$ = timer(this.options.heartbeatTimeout).pipe(map(() => 'timeout'))
                         return combineLatest([of(time), race(request$, timeout$)])
                     }),
-                    tap(([sent, received]) => {
+                    map(([sent, received]) => {
                         if (received === 'timeout') {
-                            // new election
-                            this.options.logger?.info(loggerName, 'leader is dead.')
-                            this.election.start()
-                            return
+                            return 'timeout'
                         }
                         const totalTime = Date.now() - sent
                         this.options.logger?.info(loggerName, 'heartbeat', 'total =', totalTime)
                     }),
+                    filter(r => r === 'timeout'),
                 )
-                .subscribe(),
+                .subscribe(() => {
+                    // new election
+                    this.options.logger?.info(loggerName, 'leader is dead.')
+                    this.election.start()
+                }),
         )
     }
 
