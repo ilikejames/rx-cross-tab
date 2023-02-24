@@ -10,19 +10,19 @@ export class Logger {
     }
 
     debug(...args: any[]) {
-        console.debug(...this.log(...args))
+        //console.debug(...this.log(...args))
     }
 
     info(...args: any[]) {
-        console.info(...this.log(...args))
+        //console.info(...this.log(...args))
     }
 
     warn(...args: any[]) {
-        console.warn(...this.log(...args))
+        //console.warn(...this.log(...args))
     }
 
     error(...args: any[]) {
-        console.error(...this.log(...args))
+        //console.error(...this.log(...args))
     }
 }
 

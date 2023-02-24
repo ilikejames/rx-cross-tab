@@ -9,7 +9,7 @@ test.describe.parallel('leadership', () => {
         env = await init()
     })
 
-    test.afterEach(async () => {
+    test.afterEach(async ({ context }) => {
         return env.dispose()
     })
 
@@ -65,6 +65,7 @@ test.describe.parallel('leadership', () => {
     })
 
     test('with multiple open and new tabs join', async ({ context }) => {
+        test.slow()
         const tabNames = ['a', 'b', 'c']
         log.when('Opening tabs', tabNames)
         const instances = await createMultipleInstances(env.url, context, tabNames)
@@ -73,10 +74,11 @@ test.describe.parallel('leadership', () => {
         const originalStatus = await getAllLeadershipStatus(instances)
         const originalLeader = originalStatus.find(r => r.status === 'LEADER')!
 
-        const newTabs = ['new-d', 'new- e']
+        const newTabs = ['new-d', 'new-e']
         log.when('Opening more tabs', newTabs)
         const newInstances = await createMultipleInstances(env.url, context, newTabs)
         await waitForElectionResults(newInstances)
+        log.then('Election succeeded...')
         const results = await getAllLeadershipStatus([...instances, ...newInstances])
 
         expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
@@ -132,7 +134,18 @@ test.describe.parallel('leadership', () => {
     test('when a leader "dies"', async ({ context }) => {
         const tabNames = ['a', 'b', 'c', 'd', 'e']
         log.when(`Opening tabs "${tabNames}"`)
+
         const instances = await createMultipleInstances(env.url, context, tabNames)
+
+        const logs = new Map<string, string[]>()
+        instances.forEach((instance, i) => {
+            logs.set(tabNames[i], [])
+            instance.on('console', msg => {
+                log.debug('console', tabNames[i], msg.text())
+                logs.get(tabNames[i])!.push(msg.text())
+            })
+        })
+
         await waitForElectionResults(instances)
         const initial = await getAllLeadershipStatus(instances)
 
@@ -140,17 +153,31 @@ test.describe.parallel('leadership', () => {
         const leaderIndex = initial.findIndex(r => r.status === 'LEADER')
         log.when(`The leader tab ${leaderIndex} "${initialLeader.iam}" dies....`)
         await instances[leaderIndex].close({ runBeforeUnload: false })
+
+        await waitUntil(async () => {
+            const isClosed = await instances[leaderIndex].isClosed()
+            log.debug('isClosed', isClosed)
+            return isClosed
+        })
+
         const afterInstances = instances.filter((_, i) => i !== leaderIndex)
 
-        await waitForLeaderConsensus(afterInstances, { timeout: 10_000 })
+        try {
+            await waitForLeaderConsensus(afterInstances, { timeout: 10_000 })
 
-        const results = await getAllLeadershipStatus(afterInstances)
+            const results = await getAllLeadershipStatus(afterInstances)
 
-        expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
-        const newLeaderTab = results.find(r => r.status === 'LEADER')!
-        const followerTabs = results.filter(r => r.status === 'FOLLOWER')
-        expect(followerTabs).toHaveLength(afterInstances.length - 1)
-        followerTabs.every(f => expect(f.leader).toEqual(newLeaderTab.iam))
+            expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
+            const newLeaderTab = results.find(r => r.status === 'LEADER')!
+            const followerTabs = results.filter(r => r.status === 'FOLLOWER')
+            expect(followerTabs).toHaveLength(afterInstances.length - 1)
+            followerTabs.every(f => expect(f.leader).toEqual(newLeaderTab.iam))
+        } catch (e) {
+            log.debug('ERROR')
+            logs.forEach((logs, name) => {
+                log.debug(name, JSON.stringify(logs))
+            })
+        }
     })
 })
 

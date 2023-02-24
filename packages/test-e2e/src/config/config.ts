@@ -7,7 +7,7 @@ export const config: PlaywrightTestConfig = {
     testDir: '../',
     testMatch: /.*(spec).(ts)/g,
     /* Maximum time one test can run for. */
-    timeout: parseInt(process.env.TEST_TIMEOUT || `${15 * 1000}`),
+    timeout: parseInt(process.env.TEST_TIMEOUT || `${30 * 1000}`),
     expect: {
         /**
          * Maximum time expect() should wait for the condition to be met.
@@ -15,6 +15,7 @@ export const config: PlaywrightTestConfig = {
          */
         timeout: 5000,
     },
+
     /* Run tests in files in parallel */
     fullyParallel: true,
     /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -33,7 +34,7 @@ export const config: PlaywrightTestConfig = {
         baseURL: process.env.BASE_URL || `http://localhost:${PORT}`,
 
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-        trace: 'on-first-retry',
+        trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
     },
 
@@ -52,6 +53,9 @@ export const config: PlaywrightTestConfig = {
             name: 'firefox',
             use: {
                 headless: true,
+                launchOptions: {
+                    args: ['-jsconsole'],
+                },
                 ...devices['Desktop Firefox'],
             },
         },

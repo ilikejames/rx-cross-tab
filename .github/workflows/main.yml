@@ -51,6 +51,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: e2e-results
-          path: packages/test-e2e/*/test-results/**/*.png
+          path: packages/test-e2e/test-results/**/*.*
           if-no-files-found: ignore
 

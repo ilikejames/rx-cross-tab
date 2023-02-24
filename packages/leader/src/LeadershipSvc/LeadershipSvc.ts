@@ -16,6 +16,7 @@ import {
 } from 'rxjs'
 import { v4 as uuid } from 'uuid'
 import { ElectionOptions, ElectionResultTypes, ElectionResults, ElectionSvc, defaultElectionOptions } from '../ElectionSvc'
+import { ElectionEvents, ElectionSvcEventTypes } from '../ElectionSvc/ElectionSvc'
 import { LoggerOptions, loggerName } from '../logger'
 import { ChannelNetwork } from '../network'
 import { LeaderStatus, LeadershipStatus, isElectionResult } from '../types'
@@ -72,7 +73,7 @@ export class LeadershipSvc {
         this.options = { ...defaultSettings, ...options }
         this.channel = new ChannelNetwork<LeadershipTopics>(this.options.channelName, this.iam, this.options.logger)
 
-        this.election = new ElectionSvc(this.onElectionComplete.bind(this), this.iam, this.options, this.options.logger)
+        this.election = new ElectionSvc(this.iam, this.options, this.options.logger)
 
         // WhoIsLeader: only leader responds
         this.subscription.add(
@@ -127,6 +128,16 @@ export class LeadershipSvc {
                 this.channel.sendToTopic(LeadershipTopicTypes.Leaving, undefined)
             }),
         )
+
+        this.election.events$.subscribe(this.onElectionEvent.bind(this))
+    }
+
+    private onElectionEvent(event: ElectionEvents) {
+        switch (event.type) {
+            case ElectionSvcEventTypes.Complete:
+                return this.onElectionComplete(event.payload)
+            case ElectionSvcEventTypes.Started:
+        }
     }
 
     public get iam() {
