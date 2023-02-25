@@ -141,7 +141,7 @@ test.describe.parallel('leadership', () => {
         instances.forEach((instance, i) => {
             logs.set(tabNames[i], [])
             instance.on('console', msg => {
-                log.debug('console', tabNames[i], msg.text())
+                log.debug('console-' + tabNames[i], msg.text())
                 logs.get(tabNames[i])!.push(msg.text())
             })
         })
@@ -162,23 +162,15 @@ test.describe.parallel('leadership', () => {
 
         const afterInstances = instances.filter((_, i) => i !== leaderIndex)
 
-        try {
-            await waitForLeaderConsensus(afterInstances, { timeout: 10_000 })
+        await waitForLeaderConsensus(afterInstances, { timeout: 10_000 })
 
-            const results = await getAllLeadershipStatus(afterInstances)
+        const results = await getAllLeadershipStatus(afterInstances)
 
-            expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
-            const newLeaderTab = results.find(r => r.status === 'LEADER')!
-            const followerTabs = results.filter(r => r.status === 'FOLLOWER')
-            expect(followerTabs).toHaveLength(afterInstances.length - 1)
-            followerTabs.every(f => expect(f.leader).toEqual(newLeaderTab.iam))
-        } catch (e) {
-            log.debug('ERROR')
-            logs.forEach((logs, name) => {
-                log.debug(name, JSON.stringify(logs))
-            })
-            throw e
-        }
+        expect(results.filter(r => r.status === 'LEADER')).toHaveLength(1)
+        const newLeaderTab = results.find(r => r.status === 'LEADER')!
+        const followerTabs = results.filter(r => r.status === 'FOLLOWER')
+        expect(followerTabs).toHaveLength(afterInstances.length - 1)
+        followerTabs.every(f => expect(f.leader).toEqual(newLeaderTab.iam))
     })
 })
 

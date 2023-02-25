@@ -153,11 +153,13 @@ export class ElectionSvc {
     }
 
     private countVotes() {
+        this.logger?.debug(loggerName, 'counting votes', JSON.stringify(this.votes))
+
         const result = voteCounter(this.instanceId, this.votes)
         this.electionTimerId = null
         this.hasVoted = false
         this.votes.clear()
-        this.logger?.debug(loggerName, 'Election results', result)
+        this.logger?.debug(loggerName, 'Election results', JSON.stringify(result))
         // Do we need to ensure all agree on the outcome?
         this.events.next({ type: ElectionSvcEventTypes.Complete, payload: result })
     }
