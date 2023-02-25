@@ -1,9 +1,10 @@
 import { isElectionResult } from '@tabrx/leader'
 import React, { FC, useId } from 'react'
-import { useLeader } from '@/api/useLeader'
+import { useHeartbeatEvents, useLeader } from '@/api/useLeader'
 
 export const Leadership: FC = () => {
     const leader = useLeader()
+    const heartbeat = useHeartbeatEvents()
     const iamId = useId()
     const statusId = useId()
     const leaderId = useId()
@@ -23,6 +24,13 @@ export const Leadership: FC = () => {
             <div>
                 <label htmlFor={leaderId}>Leader: </label>
                 <input id={leaderId} name="leader" value={isElectionResult(leader) ? leader.leaderId : '-'} disabled={true} />
+            </div>
+            <div>
+                <ul>
+                    {heartbeat.map((h, i) => (
+                        <li key={i}>{JSON.stringify(h)}</li>
+                    ))}
+                </ul>
             </div>
         </section>
     )

@@ -9,14 +9,15 @@ import {
     map,
     of,
     race,
+    share,
     shareReplay,
     switchMap,
-    tap,
     timer,
     withLatestFrom,
 } from 'rxjs'
 import { v4 as uuid } from 'uuid'
 import { ElectionOptions, ElectionResultTypes, ElectionResults, ElectionSvc, defaultElectionOptions } from '../ElectionSvc'
+import { ElectionEvents, ElectionSvcEventTypes } from '../ElectionSvc/ElectionSvc'
 import { LoggerOptions, loggerName } from '../logger'
 import { ChannelNetwork } from '../network'
 import { LeaderStatus, LeadershipStatus, isElectionResult } from '../types'
@@ -31,7 +32,7 @@ import {
     WhoIsLeaderResponse,
 } from './messageTypes'
 
-type LeadershipOptions = Omit<ElectionOptions, '___delaySelfVoteForTesting'> & {
+export type LeadershipOptions = Omit<ElectionOptions, '___delaySelfVoteForTesting'> & {
     startupTimeout: number
     channelName: string
     logger?: LoggerOptions
@@ -47,6 +48,39 @@ const defaultSettings: LeadershipOptions = {
     ...defaultElectionOptions,
 }
 
+const HeartbeatTypes = {
+    Request: 'Request',
+    Response: 'Response',
+    ServiceResponse: 'ServiceResponse',
+    Timeout: 'Timeout',
+} as const
+
+type HeartbeatEventServiceResponse = {
+    type: typeof HeartbeatTypes.ServiceResponse
+    iam: string
+    to: string
+    ts: number
+}
+
+type HeartbeatEventRequest = {
+    type: typeof HeartbeatTypes.Request
+    to: string
+    ts: number
+}
+
+type HeartbeatEventResponse = {
+    type: typeof HeartbeatTypes.Response
+    from: string
+    ts: number
+}
+
+type HeartbeatTimeout = {
+    type: typeof HeartbeatTypes.Timeout
+    from: string
+    ts: number
+}
+type HeartbeatEvents = HeartbeatEventServiceResponse | HeartbeatEventRequest | HeartbeatEventResponse | HeartbeatTimeout
+
 export class LeadershipSvc {
     private options: LeadershipOptions
     private channel: ChannelNetwork<LeadershipTopics>
@@ -54,6 +88,9 @@ export class LeadershipSvc {
     private leader: BehaviorSubject<LeaderStatus>
     public readonly leader$: Observable<LeaderStatus>
     private subscription: Subscription
+
+    private heartbeatEvents = new BehaviorSubject<HeartbeatEvents | null>(null)
+    public readonly heartbeatEvents$ = this.heartbeatEvents.pipe(share())
 
     constructor(options?: Partial<LeadershipOptions>) {
         this.leader = new BehaviorSubject<LeaderStatus>({
@@ -63,10 +100,24 @@ export class LeadershipSvc {
         this.leader$ = this.leader.pipe(shareReplay(1))
         this.subscription = this.leader$.subscribe()
 
+        // remove undefined values
+        options &&
+            Object.keys(options).forEach(k => {
+                const key = k as keyof LeadershipOptions
+                if (options[key] === undefined) delete options[key]
+            })
+
         this.options = { ...defaultSettings, ...options }
+
+        this.subscription.add(
+            this.heartbeatEvents$.subscribe(v => {
+                this.options.logger?.info(loggerName, 'heartbeatEvents$', v)
+            }),
+        )
+
         this.channel = new ChannelNetwork<LeadershipTopics>(this.options.channelName, this.iam, this.options.logger)
 
-        this.election = new ElectionSvc(this.onElectionComplete.bind(this), this.iam, this.options, this.options.logger)
+        this.election = new ElectionSvc(this.iam, this.options, this.options.logger)
 
         // WhoIsLeader: only leader responds
         this.subscription.add(
@@ -121,6 +172,16 @@ export class LeadershipSvc {
                 this.channel.sendToTopic(LeadershipTopicTypes.Leaving, undefined)
             }),
         )
+
+        this.election.events$.subscribe(this.onElectionEvent.bind(this))
+    }
+
+    private onElectionEvent(event: ElectionEvents) {
+        switch (event.type) {
+            case ElectionSvcEventTypes.Complete:
+                return this.onElectionComplete(event.payload)
+            case ElectionSvcEventTypes.Started:
+        }
     }
 
     public get iam() {
@@ -137,6 +198,12 @@ export class LeadershipSvc {
             from: this.iam,
             payload: Date.now() as Timestamp,
         }
+        this.heartbeatEvents.next({
+            type: HeartbeatTypes.ServiceResponse,
+            iam: this.iam,
+            to: message.from,
+            ts: Date.now(),
+        })
         this.channel.send(response)
     }
 
@@ -171,6 +238,8 @@ export class LeadershipSvc {
             leaderId: results.winner!,
         })
 
+        this.heartbeat()
+
         this.options.logger?.info(loggerName, `I am ${results.type === ElectionResultTypes.Won ? 'the leader' : 'a follower'}`)
     }
 
@@ -181,7 +250,7 @@ export class LeadershipSvc {
             // TODO: can we check for something present e.g. local storage item.
             // no item... go straight to election
             this.options.logger?.info(loggerName, 'Starting...')
-            const timeoutMs = 10 + Math.random() * this.options.startupTimeout
+            const timeoutMs = this.options.startupTimeout
 
             this.options.logger?.debug(loggerName, `Waiting for ${LeadershipTopicTypes.WhoIsLeaderResponse} within ${timeoutMs}ms`)
 
@@ -190,6 +259,7 @@ export class LeadershipSvc {
             this.options.logger?.info(loggerName, 'leader is', result)
             this.options.logger?.info(loggerName, 'I am a follower')
             this.leader.next({ ...result.payload, iam: this.iam })
+            this.heartbeat()
         } catch (ex) {
             this.options.logger?.debug(loggerName, `Timeout in ${Date.now() - startTime}ms`)
             this.leader.next({
@@ -197,8 +267,6 @@ export class LeadershipSvc {
                 status: LeadershipStatus.ELECTING,
             })
             this.election.start()
-        } finally {
-            this.heartbeat()
         }
     }
 
@@ -208,29 +276,53 @@ export class LeadershipSvc {
                 .pipe(
                     withLatestFrom(this.leader$),
                     // only when follower
-                    filter(([_, leader]) => leader.status === LeadershipStatus.FOLLOWER),
-                    switchMap(() => {
+                    filter(([_, leader]) => {
+                        this.options.logger?.debug(loggerName, 'my status', leader.status)
+                        return leader.status === LeadershipStatus.FOLLOWER
+                    }),
+                    switchMap(([_, leader]) => {
                         this.options.logger?.info(loggerName, 'heartbeating')
                         const time = Date.now() as Timestamp
                         const request$ = this.channel.requestResponse({
                             topic: LeadershipTopicTypes.Heartbeat,
                             payload: time,
                         }) as Observable<HeartbeatResponse>
+
+                        this.heartbeatEvents.next({
+                            type: HeartbeatTypes.Request,
+                            to: leader.iam,
+                            ts: Date.now(),
+                        })
+
                         const timeout$ = timer(this.options.heartbeatTimeout).pipe(map(() => 'timeout'))
-                        return combineLatest([of(time), race(request$, timeout$)])
+                        return combineLatest([of(time), race(request$, timeout$), of(leader)])
                     }),
-                    tap(([sent, received]) => {
+                    map(([sent, received, prevLeader]) => {
                         if (received === 'timeout') {
-                            // new election
-                            this.options.logger?.info(loggerName, 'leader is dead.')
-                            this.election.start()
-                            return
+                            this.heartbeatEvents.next({
+                                type: HeartbeatTypes.Timeout,
+                                ts: Date.now(),
+                                from: prevLeader.iam,
+                            })
+                            return 'timeout'
                         }
+
+                        this.heartbeatEvents.next({
+                            type: HeartbeatTypes.Response,
+                            from: (received as HeartbeatResponse).from,
+                            ts: Date.now(),
+                        })
+
                         const totalTime = Date.now() - sent
                         this.options.logger?.info(loggerName, 'heartbeat', 'total =', totalTime)
                     }),
+                    filter(r => r === 'timeout'),
                 )
-                .subscribe(),
+                .subscribe(() => {
+                    // new election
+                    this.options.logger?.info(loggerName, 'leader is dead.')
+                    this.election.start()
+                }),
         )
     }
 

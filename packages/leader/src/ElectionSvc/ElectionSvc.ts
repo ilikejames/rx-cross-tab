@@ -1,4 +1,4 @@
-import { filter } from 'rxjs'
+import { BehaviorSubject, filter, share } from 'rxjs'
 import { LoggerOptions, loggerName } from '../logger'
 import { ChannelNetwork } from '../network'
 import { ElectionTopics, Vote, VoteForMe } from './messageTypes'
@@ -20,6 +20,27 @@ export const defaultElectionOptions: ElectionOptions = {
 
 const TERM = 0
 
+export const ElectionSvcEventTypes = {
+    Initialized: 'Initialized',
+    Started: 'Started',
+    Complete: 'Complete',
+} as const
+
+type Initialized = {
+    type: typeof ElectionSvcEventTypes.Initialized
+}
+
+type ElectionStarted = {
+    type: typeof ElectionSvcEventTypes.Started
+}
+
+type ElectionComplete = {
+    type: typeof ElectionSvcEventTypes.Complete
+    payload: ElectionResults
+}
+
+export type ElectionEvents = Initialized | ElectionStarted | ElectionComplete
+
 export class ElectionSvc {
     private channel: ChannelNetwork<keyof typeof ElectionTopics>
     private options: ElectionOptions
@@ -29,15 +50,16 @@ export class ElectionSvc {
     private electionTimerId: ReturnType<typeof globalThis.setTimeout> | null = null
     private votes = new Map<VoteBy, VoteFor>()
 
-    constructor(
-        private resultHandler: (result: ElectionResults) => void,
-        private readonly instanceId: string,
-        options?: Partial<ElectionOptions>,
-        private logger?: LoggerOptions,
-    ) {
+    private events = new BehaviorSubject<ElectionEvents>({
+        type: ElectionSvcEventTypes.Initialized,
+    })
+    public readonly events$ = this.events.pipe(share())
+
+    constructor(private readonly instanceId: string, options?: Partial<ElectionOptions>, private logger?: LoggerOptions) {
         this.options = { ...defaultElectionOptions, ...options }
         this.electionCompleteMs = this.options.electionTimeoutMin + this.options.electionTimeoutRange
         this.channel = new ChannelNetwork(this.options.electionChannelName, this.instanceId, this.logger)
+        this.events$.subscribe()
 
         this.channel
             .subscribeToTopic(ElectionTopics.VoteForMe)
@@ -64,6 +86,7 @@ export class ElectionSvc {
         if (!this.electionTimerId) {
             // clear count
             this.votes.clear()
+            this.events.next({ type: ElectionSvcEventTypes.Started })
             const remainingOfElection = message.payload.endOfElectionTime - Date.now()
             this.logger?.debug(loggerName, `New election requested, completing in ${remainingOfElection}ms`)
             this.hasVoted = false
@@ -104,6 +127,7 @@ export class ElectionSvc {
             (this.options.___delaySelfVoteForTesting || 0)
 
         this.logger?.info(loggerName, 'Starting election...')
+        this.events.next({ type: ElectionSvcEventTypes.Started })
         this.logger?.debug(loggerName, `Delaying vote ${delayMs}ms`, Date.now() + delayMs)
 
         const endOfElectionTime = Date.now() + this.electionCompleteMs
@@ -129,12 +153,14 @@ export class ElectionSvc {
     }
 
     private countVotes() {
+        this.logger?.debug(loggerName, 'counting votes', JSON.stringify(this.votes))
+
         const result = voteCounter(this.instanceId, this.votes)
         this.electionTimerId = null
         this.hasVoted = false
         this.votes.clear()
-        this.logger?.debug(loggerName, 'Election results', result)
+        this.logger?.debug(loggerName, 'Election results', JSON.stringify(result))
         // Do we need to ensure all agree on the outcome?
-        this.resultHandler(result)
+        this.events.next({ type: ElectionSvcEventTypes.Complete, payload: result })
     }
 }

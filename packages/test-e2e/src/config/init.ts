@@ -1,4 +1,5 @@
 import { devServiceProxy, staticServer } from '@fakehost/utils-app-server'
+import { log } from '../helper'
 import { config } from './config'
 
 export const init = async () => {
@@ -18,7 +19,9 @@ export const init = async () => {
         url: appHost.url,
         dispose: async () => {
             // fire & forget... express can take a while to close
-            appHost.dispose()
+            const startTime = Date.now()
+            await appHost.dispose()
+            log.debug(`Took ${Date.now() - startTime}ms to close appHost`)
         },
     }
 }

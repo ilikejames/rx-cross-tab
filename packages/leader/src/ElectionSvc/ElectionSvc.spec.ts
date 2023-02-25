@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { ElectionSvc } from './ElectionSvc'
+import { ElectionSvc, ElectionSvcEventTypes } from './ElectionSvc'
 import { ElectionResultTypes, ElectionResults } from './types'
 
 describe('Election', () => {
@@ -28,8 +28,13 @@ describe('Election', () => {
         })
 
         const promise = new Promise(resolve => {
-            const election = new ElectionSvc(result => resolve(result), 'instance1', {
+            const election = new ElectionSvc('instance1', {
                 electionChannelName: 'test1',
+            })
+            election.events$.subscribe(event => {
+                if (event.type === ElectionSvcEventTypes.Complete) {
+                    resolve(event.payload)
+                }
             })
             election.start()
         })
@@ -54,20 +59,30 @@ describe('Election', () => {
         })
 
         const promise1 = new Promise<ElectionResults>(resolve => {
-            const election = new ElectionSvc(result => resolve(result), 'instance1', {
+            const election = new ElectionSvc('instance1', {
                 electionChannelName: 'test2',
                 electionTimeoutRange: 100,
                 ___delaySelfVoteForTesting: -50,
             })
+            election.events$.subscribe(event => {
+                if (event.type === ElectionSvcEventTypes.Complete) {
+                    resolve(event.payload)
+                }
+            })
             election.start()
         })
         const promise2 = new Promise<ElectionResults>(resolve => {
-            const election = new ElectionSvc(result => resolve(result), 'instance2', {
+            const election = new ElectionSvc('instance2', {
                 electionChannelName: 'test2',
                 electionTimeoutRange: 100,
                 ___delaySelfVoteForTesting: 50,
             })
             election.start()
+            election.events$.subscribe(event => {
+                if (event.type === ElectionSvcEventTypes.Complete) {
+                    resolve(event.payload)
+                }
+            })
         })
 
         const [resultA, resultB] = await Promise.all([promise1, promise2])
