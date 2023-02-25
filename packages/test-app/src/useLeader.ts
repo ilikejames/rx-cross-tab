@@ -3,7 +3,7 @@ import { LeadershipSvc } from '@tabrx/leader'
 
 export const leadershipSvc = new LeadershipSvc({
     logger: {
-        debug: console.debug,
+        debug: console.info,
         info: console.info,
     },
 })

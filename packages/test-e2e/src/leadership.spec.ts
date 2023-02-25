@@ -177,6 +177,7 @@ test.describe.parallel('leadership', () => {
             logs.forEach((logs, name) => {
                 log.debug(name, JSON.stringify(logs))
             })
+            throw e
         }
     })
 })
