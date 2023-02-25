@@ -9,6 +9,7 @@ import {
     map,
     of,
     race,
+    share,
     shareReplay,
     switchMap,
     timer,
@@ -47,6 +48,39 @@ const defaultSettings: LeadershipOptions = {
     ...defaultElectionOptions,
 }
 
+const HeartbeatTypes = {
+    Request: 'Request',
+    Response: 'Response',
+    ServiceResponse: 'ServiceResponse',
+    Timeout: 'Timeout',
+} as const
+
+type HeartbeatEventServiceResponse = {
+    type: typeof HeartbeatTypes.ServiceResponse
+    iam: string
+    to: string
+    ts: number
+}
+
+type HeartbeatEventRequest = {
+    type: typeof HeartbeatTypes.Request
+    to: string
+    ts: number
+}
+
+type HeartbeatEventResponse = {
+    type: typeof HeartbeatTypes.Response
+    from: string
+    ts: number
+}
+
+type HeartbeatTimeout = {
+    type: typeof HeartbeatTypes.Timeout
+    from: string
+    ts: number
+}
+type HeartbeatEvents = HeartbeatEventServiceResponse | HeartbeatEventRequest | HeartbeatEventResponse | HeartbeatTimeout
+
 export class LeadershipSvc {
     private options: LeadershipOptions
     private channel: ChannelNetwork<LeadershipTopics>
@@ -54,6 +88,9 @@ export class LeadershipSvc {
     private leader: BehaviorSubject<LeaderStatus>
     public readonly leader$: Observable<LeaderStatus>
     private subscription: Subscription
+
+    private heartbeatEvents = new BehaviorSubject<HeartbeatEvents | null>(null)
+    public readonly heartbeatEvents$ = this.heartbeatEvents.pipe(share())
 
     constructor(options?: Partial<LeadershipOptions>) {
         this.leader = new BehaviorSubject<LeaderStatus>({
@@ -71,6 +108,13 @@ export class LeadershipSvc {
             })
 
         this.options = { ...defaultSettings, ...options }
+
+        this.subscription.add(
+            this.heartbeatEvents$.subscribe(v => {
+                this.options.logger?.info(loggerName, 'heartbeatEvents$', v)
+            }),
+        )
+
         this.channel = new ChannelNetwork<LeadershipTopics>(this.options.channelName, this.iam, this.options.logger)
 
         this.election = new ElectionSvc(this.iam, this.options, this.options.logger)
@@ -154,6 +198,12 @@ export class LeadershipSvc {
             from: this.iam,
             payload: Date.now() as Timestamp,
         }
+        this.heartbeatEvents.next({
+            type: HeartbeatTypes.ServiceResponse,
+            iam: this.iam,
+            to: message.from,
+            ts: Date.now(),
+        })
         this.channel.send(response)
     }
 
@@ -209,6 +259,7 @@ export class LeadershipSvc {
             this.options.logger?.info(loggerName, 'leader is', result)
             this.options.logger?.info(loggerName, 'I am a follower')
             this.leader.next({ ...result.payload, iam: this.iam })
+            this.heartbeat()
         } catch (ex) {
             this.options.logger?.debug(loggerName, `Timeout in ${Date.now() - startTime}ms`)
             this.leader.next({
@@ -225,21 +276,43 @@ export class LeadershipSvc {
                 .pipe(
                     withLatestFrom(this.leader$),
                     // only when follower
-                    filter(([_, leader]) => leader.status === LeadershipStatus.FOLLOWER),
-                    switchMap(() => {
+                    filter(([_, leader]) => {
+                        this.options.logger?.debug(loggerName, 'my status', leader.status)
+                        return leader.status === LeadershipStatus.FOLLOWER
+                    }),
+                    switchMap(([_, leader]) => {
                         this.options.logger?.info(loggerName, 'heartbeating')
                         const time = Date.now() as Timestamp
                         const request$ = this.channel.requestResponse({
                             topic: LeadershipTopicTypes.Heartbeat,
                             payload: time,
                         }) as Observable<HeartbeatResponse>
+
+                        this.heartbeatEvents.next({
+                            type: HeartbeatTypes.Request,
+                            to: leader.iam,
+                            ts: Date.now(),
+                        })
+
                         const timeout$ = timer(this.options.heartbeatTimeout).pipe(map(() => 'timeout'))
-                        return combineLatest([of(time), race(request$, timeout$)])
+                        return combineLatest([of(time), race(request$, timeout$), of(leader)])
                     }),
-                    map(([sent, received]) => {
+                    map(([sent, received, prevLeader]) => {
                         if (received === 'timeout') {
+                            this.heartbeatEvents.next({
+                                type: HeartbeatTypes.Timeout,
+                                ts: Date.now(),
+                                from: prevLeader.iam,
+                            })
                             return 'timeout'
                         }
+
+                        this.heartbeatEvents.next({
+                            type: HeartbeatTypes.Response,
+                            from: (received as HeartbeatResponse).from,
+                            ts: Date.now(),
+                        })
+
                         const totalTime = Date.now() - sent
                         this.options.logger?.info(loggerName, 'heartbeat', 'total =', totalTime)
                     }),

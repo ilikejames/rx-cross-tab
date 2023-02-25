@@ -137,15 +137,6 @@ test.describe.parallel('leadership', () => {
 
         const instances = await createMultipleInstances(env.url, context, tabNames)
 
-        const logs = new Map<string, string[]>()
-        instances.forEach((instance, i) => {
-            logs.set(tabNames[i], [])
-            instance.on('console', msg => {
-                log.debug('console-' + tabNames[i], msg.text())
-                logs.get(tabNames[i])!.push(msg.text())
-            })
-        })
-
         await waitForElectionResults(instances)
         const initial = await getAllLeadershipStatus(instances)
 

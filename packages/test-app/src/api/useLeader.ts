@@ -1,5 +1,6 @@
-import { bind } from '@react-rxjs/core'
+import { bind, shareLatest } from '@react-rxjs/core'
 import { LeadershipOptions, LeadershipSvc } from '@tabrx/leader'
+import { map, scan, throttleTime } from 'rxjs'
 import { testValues } from './testValues'
 
 const options: Partial<LeadershipOptions> = {
@@ -15,9 +16,20 @@ const options: Partial<LeadershipOptions> = {
     electionTimeoutMin: testValues.getInteger('test-electionTimeoutMin'),
 }
 
-console.log('options.a', JSON.stringify(options))
-
 export const leadershipSvc = new LeadershipSvc(options)
+
 leadershipSvc.start()
 
 export const [useLeader, leader$] = bind(leadershipSvc.leader$, undefined)
+
+export const [useHeartbeatEvents, heartbeatEvents$] = bind(() => {
+    return leadershipSvc.heartbeatEvents$.pipe(
+        scan((acc, event) => {
+            acc.push(event)
+            return acc
+        }, [] as any[]),
+        throttleTime(200, undefined, { leading: false, trailing: true }),
+        map(events => [...events].reverse()),
+        shareLatest(),
+    )
+}, [])
